@@ -1,5 +1,9 @@
+# Matlab
+*.asv
+
 # data
 Data/
+
 # macOS files
 .DS_Store
 
