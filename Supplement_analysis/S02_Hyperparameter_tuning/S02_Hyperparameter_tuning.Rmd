@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 rm(list = ls())
 source("../../utils/functions_library.R")
-load_packages(c("dplyr", "caret", "e1071","ggplot2", "pROC", "reshape2", "rstatix"))
+load_packages(c("dplyr", "caret", "e1071","ggplot2", "pROC", "reshape2", "rstatix", "glmnet", "LiblineaR"))
 ```
 
 ## Import data
@@ -33,7 +33,7 @@ data_INS_BINS_invest = cbind(INS_mean[,c(1,4:ncol(INS_mean))],BINS_mean[,4:ncol(
 data_BOLD_FC_invest = cbind(BOLD_mean[,c(1,4:ncol(BOLD_mean))],FC_mean[,4:ncol(FC_mean)])
 ```
 
-## Predicting win vs. lose
+## SVM-RBF
 ### All features
 ```{r svm_invest_all}
 acc_all = svm_cv_accuracy_optimized(data_all_invest,5,100,"radial")
@@ -45,6 +45,13 @@ file_name = 'S02_Hyper_tune_full_model.csv'
 write.csv(acc_all$accuracy_details,file_name, row.names = FALSE)
 ```
 
+```{r svm_invest_INS&BINS}
+getwd()
+file_name = 'S02_Hyper_tune_full_model.csv'
+acc_ins_bins = read.csv(file_name)
+t.test(acc_ins_bins$accuracy, mu = 0.5)
+```
+
 ### BOLD and FC
 ```{r svm_invest_BOLD&FC}
 acc_bold_fc = svm_cv_accuracy_optimized(data_BOLD_FC_invest,5,100,"radial")
@@ -54,6 +61,13 @@ setwd(out_path)
 getwd()
 file_name = 'S02_Hyper_tune_intra-brain_model.csv'
 write.csv(acc_bold_fc$accuracy_details,file_name, row.names = FALSE)
+```
+
+```{r svm_invest_INS&BINS}
+getwd()
+file_name = 'S02_Hyper_tune_intra-brain_model.csv'
+acc_ins_bins = read.csv(file_name)
+t.test(acc_ins_bins$accuracy, mu = 0.5)
 ```
 
 ### INS and BINS
@@ -68,11 +82,60 @@ write.csv(acc_ins_bins$accuracy_details,file_name, row.names = FALSE)
 ```
 
 ```{r svm_invest_INS&BINS}
+getwd()
+file_name = 'S02_Hyper_tune_inter-brain_model.csv'
+acc_ins_bins = read.csv(file_name)
+t.test(acc_ins_bins$accuracy, mu = 0.5)
+```
+
+## logistic_l2
+### All features
+```{r svm_invest_all}
+acc_all = nested_cv_classifier(data_all_invest,5,10,classifier_type = "logistic_l2")
+print(acc_all)
+file_name = 'S02_Hyper_tune_full_model_logistic_l2.csv'
+write.csv(acc_all$accuracy_details,file_name, row.names = FALSE)
+```
+
+```{r svm_invest_INS&BINS}
+getwd()
+file_name = 'S02_Hyper_tune_full_model.csv'
+acc_ins_bins = read.csv(file_name)
+t.test(acc_ins_bins$accuracy, mu = 0.5)
+```
+
+### BOLD and FC
+```{r svm_invest_BOLD&FC}
+acc_bold_fc = svm_cv_accuracy_optimized(data_BOLD_FC_invest,5,100,"radial")
+print(acc_bold_fc)
+out_path = '/Users/xiaochunhan/Documents/Research/Projects/Brains_aligned_to_win/Supplement_analysis/S02_Hyperparameter_tuning'
+setwd(out_path)
+getwd()
+file_name = 'S02_Hyper_tune_intra-brain_model.csv'
+write.csv(acc_bold_fc$accuracy_details,file_name, row.names = FALSE)
+```
+
+```{r svm_invest_INS&BINS}
+getwd()
+file_name = 'S02_Hyper_tune_intra-brain_model.csv'
+acc_ins_bins = read.csv(file_name)
+t.test(acc_ins_bins$accuracy, mu = 0.5)
+```
+
+### INS and BINS
+```{r svm_invest_INS&BINS}
+acc_ins_bins = svm_cv_accuracy_optimized(data_INS_BINS_invest,5,100,"acc_single","radial")
+print(acc_ins_bins)
 out_path = '/Users/xiaochunhan/Documents/Research/Projects/Brains_aligned_to_win/Supplement_analysis/S02_Hyperparameter_tuning'
 setwd(out_path)
 getwd()
 file_name = 'S02_Hyper_tune_inter-brain_model.csv'
-acc_ins_bins = read.csv(file_name)
-t.test(acc_ins_bins$accuracy, mu = 0.9212)
+write.csv(acc_ins_bins$accuracy_details,file_name, row.names = FALSE)
 ```
 
+```{r svm_invest_INS&BINS}
+getwd()
+file_name = 'S02_Hyper_tune_inter-brain_model.csv'
+acc_ins_bins = read.csv(file_name)
+t.test(acc_ins_bins$accuracy, mu = 0.5)
+```

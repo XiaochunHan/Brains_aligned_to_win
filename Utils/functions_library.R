@@ -905,25 +905,39 @@ lm_perm <- function(df,nfold,n_iter,out_mat){
 }
 
 #===============================================================================
-## Function27: svm_cv_accuracy_optimized
-svm_cv_accuracy_optimized <- function(df, nfold, n_iter, koi) {
-  pb <- txtProgressBar(min = 0,      # Minimum value of the progress bar
-                       max = n_iter, # Maximum value of the progress bar
-                       style = 3,    # Progress bar style (also available style = 1 and style = 2)
-                       width = 50,   # Progress bar width. Defaults to getOption("width")
-                       char = "=")   # Character used to create the bar
+## Function27: nested_cv_classifier
+nested_cv_classifier <- function(df, nfold, n_iter, classifier_type = "svm", 
+                                 kernel_type = "radial") {
   
+  pb <- txtProgressBar(min = 0, max = n_iter, style = 3, width = 50, char = "=")
+  
+  # 数据预处理
   df[,1] = factor(df[,1], levels = c(0, 1))
   df = na.omit(df)
   
-  params <- list(
-    C_range = 10^seq(-3, 3, length.out = 5),
-    gamma_range = 10^seq(-3, 3, length.out = 5)
-  )
+  # 设置参数范围
+  if (classifier_type == "svm") {
+    params <- list(
+      C_range = 10^seq(-3, 3, length.out = 7),
+      gamma_range = 10^seq(-3, 3, length.out = 7)
+    )
+    cat("使用SVM分类器（带RBF核）\n")
+  } else {
+    params <- list(C_range = 10^seq(-3, 3, length.out = 7))
+    
+    # 根据分类器类型输出不同的消息
+    switch(classifier_type,
+           "logistic_l2" = cat("使用L2正则化逻辑回归\n"),
+           "linear_svm_l2" = cat("使用L2正则化线性SVM\n"),
+           "linear_svm_l1" = cat("使用L1正则化线性SVM\n"),
+           cat("使用", classifier_type, "分类器\n")
+    )
+  }
   
-  cat("使用的参数范围:\n")
-  cat("C:", params$C_range, "\n")
-  cat("γ:", params$gamma_range, "\n")
+  cat("C参数范围:", params$C_range, "\n")
+  if (classifier_type == "svm") {
+    cat("γ参数范围:", params$gamma_range, "\n")
+  }
   
   accuracy_all = data.frame()
   
@@ -939,84 +953,272 @@ svm_cv_accuracy_optimized <- function(df, nfold, n_iter, koi) {
       test_fold[-1] = ind_scale(training_fold[-1], test_fold[-1])
       training_fold[-1] = scale(training_fold[-1])
       
-      # 参数调优
-      tune_grid = expand.grid(C = params$C_range, gamma = params$gamma_range)
-      best_accuracy = 0
-      best_params = list(C = 1, gamma = 1/ncol(training_fold[-1]))
+      # 准备矩阵格式数据
+      X_train = as.matrix(training_fold[, -1])
+      y_train = as.numeric(as.character(training_fold[, 1]))
+      X_test = as.matrix(test_fold[, -1])
+      y_test = as.numeric(as.character(test_fold[, 1]))
       
-      inner_folds = svm_createFolds(training_fold, nfold)
-      
-      for(j in 1:nrow(tune_grid)) {
-        inner_accuracies = numeric(length(inner_folds))
+      if (classifier_type == "svm") {
+        # 原始SVM（带核函数）
+        best_params = tune_svm(training_fold, params, nfold, kernel_type)
         
-        for(k in 1:length(inner_folds)) {
-          inner_training = training_fold[-inner_folds[[k]], ]
-          inner_test = training_fold[inner_folds[[k]], ]
-          
-          inner_test[-1] = ind_scale(inner_training[-1], inner_test[-1])
-          inner_training[-1] = scale(inner_training[-1])
-          
-          inner_classifier = svm(
-            formula = good_1 ~ .,
-            data = inner_training,
-            type = 'C-classification',
-            kernel = koi,
-            cost = tune_grid$C[j],
-            gamma = tune_grid$gamma[j]
-          )
-          
-          inner_pred = predict(inner_classifier, newdata = inner_test[-1])
-          inner_cm = table(inner_test[, 1], inner_pred)
-          inner_accuracies[k] = (inner_cm[1,1] + inner_cm[2,2]) / 
-            sum(inner_cm)
-        }
+        classifier = svm(
+          formula = good_1 ~ .,
+          data = training_fold,
+          type = 'C-classification',
+          kernel = kernel_type,
+          cost = best_params$C,
+          gamma = best_params$gamma
+        )
         
-        mean_inner_accuracy = mean(inner_accuracies)
+        y_pred = predict(classifier, newdata = test_fold[-1])
+        cm = table(test_fold[, 1], y_pred)
         
-        if(mean_inner_accuracy > best_accuracy) {
-          best_accuracy = mean_inner_accuracy
-          best_params = list(C = tune_grid$C[j], gamma = tune_grid$gamma[j])
-        }
+        return(list(accuracy = sum(diag(cm))/sum(cm), 
+                    best_C = best_params$C, 
+                    best_gamma = best_params$gamma))
+        
+      } else if (classifier_type == "logistic_l2") {
+        # L2正则化逻辑回归（使用glmnet）
+        best_C = tune_glmnet_logistic(X_train, y_train, params$C_range, nfold)
+        
+        # 训练最终模型
+        model = glmnet(
+          x = X_train,
+          y = y_train,
+          family = "binomial",
+          alpha = 0,  # L2正则化
+          lambda = 1/best_C,  # 注意：这里lambda是标量
+          standardize = FALSE
+        )
+        
+        # 预测概率
+        pred_prob = predict(model, newx = X_test, type = "response")
+        # 转换为类别预测
+        y_pred = ifelse(pred_prob > 0.5, 1, 0)
+        cm = table(y_test, y_pred)
+        
+        return(list(accuracy = sum(diag(cm))/sum(cm), best_C = best_C))
+        
+      } else if (classifier_type == "linear_svm_l2") {
+        # L2正则化线性SVM（使用LiblineaR）
+        best_C = tune_liblinear(X_train, y_train, params$C_range, nfold, 
+                                type = 1)  # type=1: L2正则化L2-loss SVM
+        
+        model = LiblineaR(
+          data = X_train,
+          target = factor(y_train, levels = c(0, 1)),
+          type = 1,
+          cost = best_C,
+          bias = 1,
+          verbose = FALSE
+        )
+        
+        y_pred = predict(model, newx = X_test, decisionValues = FALSE)$predictions
+        y_pred = as.numeric(as.character(y_pred))
+        cm = table(y_test, y_pred)
+        
+        return(list(accuracy = sum(diag(cm))/sum(cm), best_C = best_C))
+        
+      } else if (classifier_type == "linear_svm_l1") {
+        # L1正则化线性SVM（使用LiblineaR）
+        best_C = tune_liblinear(X_train, y_train, params$C_range, nfold, 
+                                type = 5)  # type=5: L1正则化L2-loss SVM
+        
+        model = LiblineaR(
+          data = X_train,
+          target = factor(y_train, levels = c(0, 1)),
+          type = 5,
+          cost = best_C,
+          bias = 1,
+          verbose = FALSE
+        )
+        
+        y_pred = predict(model, newx = X_test, decisionValues = FALSE)$predictions
+        y_pred = as.numeric(as.character(y_pred))
+        cm = table(y_test, y_pred)
+        
+        return(list(accuracy = sum(diag(cm))/sum(cm), best_C = best_C))
+        
+      } else {
+        stop("未知的分类器类型")
       }
-      
-      # 使用最佳参数训练最终模型
-      classifier = svm(
-        formula = good_1 ~ .,
-        data = training_fold,
-        type = 'C-classification',
-        kernel = koi,
-        cost = best_params$C,
-        gamma = best_params$gamma
-      )
-      
-      y_pred = predict(classifier, newdata = test_fold[-1])
-      cm = table(test_fold[, 1], y_pred)
-      accuracy_single = (cm[1,1] + cm[2,2]) / sum(cm)
-      
-      return(list(accuracy = accuracy_single, best_C = best_params$C, 
-                  best_gamma = best_params$gamma))
     })
     
+    # 收集结果
     accuracies = sapply(cv, function(x) x$accuracy)
     best_Cs = sapply(cv, function(x) x$best_C)
-    best_gammas = sapply(cv, function(x) x$best_gamma)
     
-    accuracy_all = rbind(accuracy_all, 
-                         data.frame(
-                           iteration = i,
-                           accuracy = mean(accuracies),
-                           mean_C = mean(best_Cs),
-                           mean_gamma = mean(best_gammas)
-                         ))
+    if (classifier_type == "svm") {
+      best_gammas = sapply(cv, function(x) x$best_gamma)
+      accuracy_all = rbind(accuracy_all, 
+                           data.frame(
+                             iteration = i,
+                             accuracy = mean(accuracies),
+                             mean_C = mean(best_Cs),
+                             mean_gamma = mean(best_gammas)
+                           ))
+    } else {
+      accuracy_all = rbind(accuracy_all, 
+                           data.frame(
+                             iteration = i,
+                             accuracy = mean(accuracies),
+                             mean_C = mean(best_Cs)
+                           ))
+    }
   }
   
+  # 输出结果
   realMean = mean(accuracy_all$accuracy)
-  cat("嵌套交叉验证完成！\n")
+  cat("\n嵌套交叉验证完成！\n")
   cat("平均准确率:", round(realMean, 4), "\n")
   cat("平均最佳C参数:", round(mean(accuracy_all$mean_C), 4), "\n")
-  cat("平均最佳γ参数:", round(mean(accuracy_all$mean_gamma), 6), "\n")
   
-  return(list(mean_accuracy = realMean, 
-              accuracy_details = accuracy_all,
-              parameter_ranges = params))
+  if (classifier_type == "svm") {
+    cat("平均最佳γ参数:", round(mean(accuracy_all$mean_gamma), 6), "\n")
+  }
+  
+  return(list(
+    mean_accuracy = realMean, 
+    accuracy_details = accuracy_all,
+    parameter_ranges = params,
+    classifier_type = classifier_type
+  ))
+}
+
+#===============================================================================
+## Function28: tune_svm
+# 辅助函数：调优SVM参数
+tune_svm <- function(training_data, params, nfold, kernel_type) {
+  tune_grid = expand.grid(C = params$C_range, gamma = params$gamma_range)
+  best_accuracy = 0
+  best_params = list(C = 1, gamma = 1/ncol(training_data[-1]))
+  
+  inner_folds = svm_createFolds(training_data, nfold)
+  
+  for(j in 1:nrow(tune_grid)) {
+    inner_accuracies = numeric(length(inner_folds))
+    
+    for(k in 1:length(inner_folds)) {
+      inner_training = training_data[-inner_folds[[k]], ]
+      inner_test = training_data[inner_folds[[k]], ]
+      
+      inner_test[-1] = ind_scale(inner_training[-1], inner_test[-1])
+      inner_training[-1] = scale(inner_training[-1])
+      
+      inner_classifier = svm(
+        formula = good_1 ~ .,
+        data = inner_training,
+        type = 'C-classification',
+        kernel = kernel_type,
+        cost = tune_grid$C[j],
+        gamma = tune_grid$gamma[j]
+      )
+      
+      inner_pred = predict(inner_classifier, newdata = inner_test[-1])
+      inner_cm = table(inner_test[, 1], inner_pred)
+      inner_accuracies[k] = sum(diag(inner_cm)) / sum(inner_cm)
+    }
+    
+    mean_inner_accuracy = mean(inner_accuracies)
+    
+    if(mean_inner_accuracy > best_accuracy) {
+      best_accuracy = mean_inner_accuracy
+      best_params = list(C = tune_grid$C[j], gamma = tune_grid$gamma[j])
+    }
+  }
+  
+  return(best_params)
+}
+
+#===============================================================================
+## Function29: tune_glmnet
+# 辅助函数：调优glmnet参数（用于逻辑回归）
+tune_glmnet_logistic <- function(X_train, y_train, C_range, nfold) {
+  best_accuracy = 0
+  best_C = 1
+  
+  # 创建内层交叉验证的折
+  fold_indices = cut(seq(1, nrow(X_train)), breaks = nfold, labels = FALSE)
+  fold_indices = sample(fold_indices)
+  
+  for(C_val in C_range) {
+    inner_accuracies = numeric(nfold)
+    
+    for(k in 1:nfold) {
+      test_indices = which(fold_indices == k, arr.ind = TRUE)
+      train_indices = which(fold_indices != k, arr.ind = TRUE)
+      
+      # 使用glmnet（非cv.glmnet）训练固定lambda的模型
+      model = glmnet(
+        x = X_train[train_indices, ],
+        y = y_train[train_indices],
+        family = "binomial",
+        alpha = 0,  # L2正则化
+        lambda = 1/C_val,  # lambda = 1/C
+        standardize = FALSE
+      )
+      
+      # 预测概率
+      pred_prob = predict(model, newx = X_train[test_indices, ], type = "response")
+      # 转换为类别预测
+      pred = ifelse(pred_prob > 0.5, 1, 0)
+      cm = table(y_train[test_indices], pred)
+      inner_accuracies[k] = sum(diag(cm)) / sum(cm)
+    }
+    
+    mean_inner_accuracy = mean(inner_accuracies)
+    
+    if(mean_inner_accuracy > best_accuracy) {
+      best_accuracy = mean_inner_accuracy
+      best_C = C_val
+    }
+  }
+  
+  return(best_C)
+}
+
+#===============================================================================
+## Function30: tune_liblinear
+# 辅助函数：调优LiblineaR参数（用于线性SVM）
+tune_liblinear <- function(X_train, y_train, C_range, nfold, type) {
+  best_accuracy = 0
+  best_C = 1
+  
+  fold_indices = cut(seq(1, nrow(X_train)), breaks = nfold, labels = FALSE)
+  fold_indices = sample(fold_indices)
+  
+  for(C_val in C_range) {
+    inner_accuracies = numeric(nfold)
+    
+    for(k in 1:nfold) {
+      test_indices = which(fold_indices == k, arr.ind = TRUE)
+      train_indices = which(fold_indices != k, arr.ind = TRUE)
+      
+      model = LiblineaR(
+        data = X_train[train_indices, ],
+        target = factor(y_train[train_indices], levels = c(0, 1)),
+        type = type,
+        cost = C_val,
+        bias = 1,
+        verbose = FALSE
+      )
+      
+      pred = predict(model, newx = X_train[test_indices, ], 
+                     decisionValues = FALSE)$predictions
+      pred = as.numeric(as.character(pred))
+      cm = table(y_train[test_indices], pred)
+      inner_accuracies[k] = sum(diag(cm)) / sum(cm)
+    }
+    
+    mean_inner_accuracy = mean(inner_accuracies)
+    
+    if(mean_inner_accuracy > best_accuracy) {
+      best_accuracy = mean_inner_accuracy
+      best_C = C_val
+    }
+  }
+  
+  return(best_C)
 }
