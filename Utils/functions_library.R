@@ -1260,3 +1260,108 @@ tune_liblinear <- function(X_train, y_train, C_range, nfold, type) {
   
   return(best_C)
 }
+
+#===============================================================================
+## Function31: tune_sensitive
+tune_sensitive <- function(df, params, nfold) {
+  # 创建参数网格
+  tune_grid = expand.grid(C = params$C_range, gamma = params$gamma_range)
+  
+  # 初始化存储每种组合准确率的矩阵
+  accuracy_matrix <- matrix(0, nrow = length(params$C_range), 
+                            ncol = length(params$gamma_range))
+  rownames(accuracy_matrix) <- params$C_range
+  colnames(accuracy_matrix) <- params$gamma_range
+  
+  best_accuracy = 0
+  best_params = list(C = 1, gamma = 1/ncol(df[-1]))
+  
+  folds = svm_createFolds(df, nfold)
+  
+  # 为每个参数组合计算准确率
+  for(j in 1:nrow(tune_grid)) {
+    accuracies = numeric(length(folds))
+    
+    for(k in 1:length(folds)) {
+      training = df[-folds[[k]], ]
+      test = df[folds[[k]], ]
+      
+      test[-1] = ind_scale(training[-1], test[-1])
+      training[-1] = scale(training[-1])
+      
+      classifier = svm(
+        formula = good_1 ~ .,
+        data = training,
+        type = 'C-classification',
+        kernel = "radial",
+        cost = tune_grid$C[j],
+        gamma = tune_grid$gamma[j]
+      )
+      
+      pred = predict(classifier, newdata = test[-1])
+      cm = table(test[, 1], pred)
+      accuracies[k] = sum(diag(cm)) / sum(cm)
+    }
+    
+    mean_accuracy = mean(accuracies)
+    
+    # 记录当前参数组合的准确率到矩阵中
+    c_index <- which(params$C_range == tune_grid$C[j])
+    gamma_index <- which(params$gamma_range == tune_grid$gamma[j])
+    accuracy_matrix[c_index, gamma_index] <- mean_accuracy
+    
+    if(mean_accuracy > best_accuracy) {
+      best_accuracy = mean_accuracy
+      best_params = list(C = tune_grid$C[j], gamma = tune_grid$gamma[j])
+    }
+  }
+  
+  # 打印每种参数组合的准确率
+  cat("每种C-γ组合的交叉验证准确率:\n")
+  print(round(accuracy_matrix, 4))
+  
+  # 绘制热图
+  draw_accuracy_heatmap(accuracy_matrix, params$C_range, params$gamma_range)
+  
+  return(list(
+    best_params = best_params, 
+    best_accuracy = best_accuracy,
+    accuracy_matrix = accuracy_matrix
+  ))
+}
+
+#===============================================================================
+## Function32: draw_accuracy_heatmap
+# 绘制准确率热图的函数
+draw_accuracy_heatmap <- function(accuracy_matrix, c_range, gamma_range) {
+  
+  # 将矩阵转换为长格式数据框
+  accuracy_df <- as.data.frame(accuracy_matrix)
+  colnames(accuracy_df) <- gamma_range
+  accuracy_df$C <- c_range
+  
+  # 转换数据格式
+  accuracy_melted <- melt(accuracy_df, id.vars = "C", 
+                          variable.name = "gamma", value.name = "accuracy")
+  accuracy_melted$gamma <- as.numeric(as.character(accuracy_melted$gamma))
+  
+  
+  # 绘制热图
+  p <- ggplot(accuracy_melted, aes(x = factor(gamma), y = factor(C), fill = accuracy)) +
+    geom_tile(color = "white") +
+    scale_fill_gradient2(low = "#4575B4", mid = "#FFFFBF",high = "#D73027", 
+                         midpoint = 0.65,
+                         limits = c(0.3,1)) +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1),
+          plot.title = element_text(hjust = 0.5),
+          plot.subtitle = element_text(hjust = 0.5))
+  
+  print(p)
+  
+  # 保存热图
+  ggsave("svm_parameter_tuning_heatmap.png", p, width = 10, height = 8, dpi = 300)
+  cat("热图已保存为 'svm_parameter_tuning_heatmap.png'\n")
+  
+  return(p)
+}

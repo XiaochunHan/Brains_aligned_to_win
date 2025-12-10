@@ -1,0 +1,247 @@
+---
+title: "S02_Hyperparameter_tuning"
+author: "Xiaochun Han"
+date: "2025-12-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+source("../../utils/functions_library.R")
+load_packages(c("dplyr", "caret", "e1071","ggplot2", "pROC", "reshape2", "rstatix", "glmnet", "LiblineaR","psych","ggplot2","reshape2"))
+basedir = '/Users/xiaochunhan/Documents/Research/Projects/Brains_aligned_to_win/Supplement_analysis/S02_Hyperparameter_tuning'
+```
+
+## Import data
+```{r impart data}
+setwd('../../Data/Develop')
+wd<-getwd()
+dataset_BOLD <- read.csv('BOLD_single_trial_invest.csv',header=TRUE,sep=",")
+dataset_FC <- read.csv('FC_single_trial_invest.csv',header=TRUE,sep=",")
+dataset_BINS <- read.csv('BINS_single_trial_invest.csv',header=TRUE,sep=",")
+dataset_INS <- read.csv('INS_single_trial_invest.csv',header=TRUE,sep=",")
+dataset_y <- read.csv('win_lose_and_pay_single_trial.csv',header=TRUE,sep=",")
+dataset_y_attack <- dataset_y[dataset_y$role.A.1. == 1,]
+dataset_y_attack <- dataset_y_attack[-c(4,14,22),] # Three sessions are deleted due to the absent of winning trial(4,22) and brain signal(14). 
+
+BOLD_mean = extract_win_or_pay_mean(dataset_BOLD,dataset_y_attack,"BOLD_","win",FALSE)
+FC_mean = extract_win_or_pay_mean(dataset_FC,dataset_y_attack,"FC_","win",FALSE)
+INS_mean = extract_win_or_pay_mean(dataset_INS,dataset_y_attack,"WNS_","win",FALSE)
+BINS_mean = extract_win_or_pay_mean(dataset_BINS,dataset_y_attack,"BNS_","win",FALSE)
+data_all_invest = cbind(INS_mean[,c(1,4:ncol(INS_mean))],BINS_mean[,4:ncol(BINS_mean)],BOLD_mean[,4:ncol(BOLD_mean)],FC_mean[,4:ncol(FC_mean)])
+data_INS_BINS_invest = cbind(INS_mean[,c(1,4:ncol(INS_mean))],BINS_mean[,4:ncol(BINS_mean)])
+data_BOLD_FC_invest = cbind(BOLD_mean[,c(1,4:ncol(BOLD_mean))],FC_mean[,4:ncol(FC_mean)])
+```
+
+## SVM-RBF
+### All features
+```{r svm_rbf_all1}
+params <- list(
+  C_range = 10^seq(-3, 3, length.out = 5),
+  gamma_range = 10^seq(-3, 0, length.out = 5)
+)
+
+result <- tune_sensitive(data_all_invest, params, nfold = 5)
+```
+
+### BOLD and FC
+```{r svm_rbf_all1}
+result <- tune_sensitive(data_BOLD_FC_invest, params, nfold = 5)
+```
+
+### INS and BINS
+```{r svm_rbf_all1}
+result <- tune_sensitive(data_INS_BINS_invest, params, nfold = 5)
+```
+
+```{r svm_rbf_INS&BINS2}
+perm_name = 'permuted_data_svm-rbf.csv/combined_data_svm-rbf_data_INS_BINS_invest_20251210_112723.csv'
+perm_acc = read.csv(perm_name)
+p = sum(acc_sum$mean[1] < perm_acc$accuracy)/1000
+print(p)
+```
+
+## logistic_l1
+### All features
+```{r svm_logistic_l1_all1}
+file_name = 'S02_Hyper_tune_full_model_logistic_l1.csv'
+acc = read.csv(file_name)
+acc_sum = describe(acc[c("accuracy","mean_C")])
+print(acc_sum)
+```
+
+```{r svm_logistic_l1_all2}
+perm_name = 'permuted_data_logistic_l1.csv/combined_data_logistic_l1_data_all_invest_20251210_113526.csv'
+perm_acc = read.csv(perm_name)
+p = sum(acc_sum$mean[1] < perm_acc$accuracy)/1000
+print(p)
+```
+
+### BOLD and FC
+```{r svm_logistic_l1_BOLD&FC1}
+file_name = 'S02_Hyper_tune_intra-brain_model_logistic_l1.csv'
+acc = read.csv(file_name)
+acc_sum = describe(acc[c("accuracy","mean_C")])
+print(acc_sum)
+```
+
+```{r svm_logistic_l1_BOLD&FC2}
+perm_name = 'permuted_data_logistic_l1.csv/combined_data_logistic_l1_data_BOLD_FC_invest_20251210_113838.csv'
+perm_acc = read.csv(perm_name)
+p = sum(acc_sum$mean[1] < perm_acc$accuracy)/1000
+print(p)
+```
+
+### INS and BINS
+```{r svm_logistic_l1_INS&BINS1}
+file_name = 'S02_Hyper_tune_inter-brain_model_logistic_l1.csv'
+acc = read.csv(file_name)
+acc_sum = describe(acc[c("accuracy","mean_C")])
+print(acc_sum)
+```
+
+```{r svm_logistic_l1_INS&BINS2}
+perm_name = 'permuted_data_logistic_l1.csv/combined_data_logistic_l1_data_INS_BINS_invest_20251210_113048.csv'
+perm_acc = read.csv(perm_name)
+p = sum(acc_sum$mean[1] < perm_acc$accuracy)/1000
+print(p)
+```
+
+## logistic_l2
+### All features
+```{r svm_logistic_l2_all1}
+file_name = 'S02_Hyper_tune_full_model_logistic_l2.csv'
+acc = read.csv(file_name)
+acc_sum = describe(acc[c("accuracy","mean_C")])
+print(acc_sum)
+```
+
+```{r svm_logistic_l2_all2}
+perm_name = 'permuted_data_logistic_l2.csv/combined_data_logistic_l2_data_all_invest_20251210_113849.csv'
+perm_acc = read.csv(perm_name)
+p = sum(acc_sum$mean[1] < perm_acc$accuracy)/1000
+print(p)
+```
+
+### BOLD and FC
+```{r svm_logistic_l2_BOLD&FC1}
+file_name = 'S02_Hyper_tune_intra-brain_model_logistic_l2.csv'
+acc = read.csv(file_name)
+acc_sum = describe(acc[c("accuracy","mean_C")])
+print(acc_sum)
+```
+
+```{r svm_logistic_l2_BOLD&FC2}
+perm_name = 'permuted_data_logistic_l2.csv/combined_data_logistic_l2_data_BOLD_FC_invest_20251210_113820.csv'
+perm_acc = read.csv(perm_name)
+p = sum(acc_sum$mean[1] < perm_acc$accuracy)/1000
+print(p)
+```
+
+### INS and BINS
+```{r svm_logistic_l2_INS&BINS1}
+file_name = 'S02_Hyper_tune_inter-brain_model_logistic_l2.csv'
+acc = read.csv(file_name)
+acc_sum = describe(acc[c("accuracy","mean_C")])
+print(acc_sum)
+```
+
+```{r svm_logistic_l2_INS&BINS2}
+perm_name = 'permuted_data_logistic_l2.csv/combined_data_logistic_l2_data_INS_BINS_invest_20251210_113144.csv'
+perm_acc = read.csv(perm_name)
+p = sum(acc_sum$mean[1] < perm_acc$accuracy)/1000
+print(p)
+```
+
+## linear_svm_l1
+### All features
+```{r svm_linear_l1_all1}
+file_name = 'S02_Hyper_tune_full_model_linear_svm_l1.csv'
+acc = read.csv(file_name)
+acc_sum = describe(acc[c("accuracy","mean_C")])
+print(acc_sum)
+```
+
+```{r svm_linear_l1_all2}
+perm_name = 'permuted_data_linear_svm_l1.csv/combined_data_linear_svm_l1_data_all_invest_20251210_113609.csv'
+perm_acc = read.csv(perm_name)
+p = sum(acc_sum$mean[1] < perm_acc$accuracy)/1000
+print(p)
+```
+
+### BOLD and FC
+```{r svm_linear_l1_BOLD&FC1}
+file_name = 'S02_Hyper_tune_intra-brain_model_linear_svm_l1.csv'
+acc = read.csv(file_name)
+acc_sum = describe(acc[c("accuracy","mean_C")])
+print(acc_sum)
+```
+
+```{r svm_linear_l1_BOLD&FC2}
+perm_name = 'permuted_data_linear_svm_l1.csv/combined_data_linear_svm_l1_data_BOLD_FC_invest_20251210_113811.csv'
+perm_acc = read.csv(perm_name)
+p = sum(acc_sum$mean[1] < perm_acc$accuracy)/1000
+print(p)
+```
+
+### INS and BINS
+```{r svm_linear_l1_INS&BINS1}
+file_name = 'S02_Hyper_tune_inter-brain_model_linear_svm_l1.csv'
+acc = read.csv(file_name)
+acc_sum = describe(acc[c("accuracy","mean_C")])
+print(acc_sum)
+```
+
+```{r svm_linear_l1_INS&BINS2}
+perm_name = 'permuted_data_linear_svm_l1.csv/combined_data_linear_svm_l1_data_INS_BINS_invest_20251210_113259.csv'
+perm_acc = read.csv(perm_name)
+p = sum(acc_sum$mean[1] < perm_acc$accuracy)/1000
+print(p)
+```
+
+## linear_svm_l2
+### All features
+```{r svm_linear_l2_all1}
+file_name = 'S02_Hyper_tune_full_model_linear_svm_l2.csv'
+acc = read.csv(file_name)
+acc_sum = describe(acc[c("accuracy","mean_C")])
+print(acc_sum)
+```
+
+```{r svm_linear_l2_all2}
+perm_name = 'permuted_data_linear_svm_l2.csv/combined_data_linear_svm_l2_data_all_invest_20251210_113715.csv'
+perm_acc = read.csv(perm_name)
+p = sum(acc_sum$mean[1] < perm_acc$accuracy)/1000
+print(p)
+```
+
+### BOLD and FC
+```{r svm_linear_l2_BOLD&FC1}
+file_name = 'S02_Hyper_tune_intra-brain_model_linear_svm_l2.csv'
+acc = read.csv(file_name)
+acc_sum = describe(acc[c("accuracy","mean_C")])
+print(acc_sum)
+```
+
+```{r svm_linear_l2_BOLD&FC2}
+perm_name = 'permuted_data_linear_svm_l2.csv/combined_data_linear_svm_l2_data_BOLD_FC_invest_20251210_113826.csv'
+perm_acc = read.csv(perm_name)
+p = sum(acc_sum$mean[1] < perm_acc$accuracy)/1000
+print(p)
+```
+
+### INS and BINS
+```{r svm_linear_l2_INS&BINS1}
+file_name = 'S02_Hyper_tune_inter-brain_model_linear_svm_l2.csv'
+acc = read.csv(file_name)
+acc_sum = describe(acc[c("accuracy","mean_C")])
+print(acc_sum)
+```
+
+```{r svm_linear_l2_INS&BINS2}
+perm_name = 'permuted_data_linear_svm_l2.csv/combined_data_linear_svm_l2_data_INS_BINS_invest_20251210_113344.csv'
+perm_acc = read.csv(perm_name)
+p = sum(acc_sum$mean[1] < perm_acc$accuracy)/1000
+print(p)
+```
