@@ -38,8 +38,8 @@ data_BOLD_FC_invest = cbind(BOLD_mean[,c(1,4:ncol(BOLD_mean))],FC_mean[,4:ncol(F
 ### All features
 ```{r svm_rbf_all1}
 params <- list(
-  C_range = 10^seq(-3, 3, length.out = 5),
-  gamma_range = 10^seq(-3, 0, length.out = 5)
+  C_range = seq(-5, 15, length.out = 10),
+  gamma_range = seq(-15, 3, length.out = 10)
 )
 
 result <- tune_sensitive(data_all_invest, params, nfold = 5)

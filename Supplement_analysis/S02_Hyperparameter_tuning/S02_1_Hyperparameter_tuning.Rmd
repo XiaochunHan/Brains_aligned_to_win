@@ -36,20 +36,13 @@ data_BOLD_FC_invest = cbind(BOLD_mean[,c(1,4:ncol(BOLD_mean))],FC_mean[,4:ncol(F
 ## SVM-RBF
 ### All features
 ```{r svm_invest_all}
-acc_all = svm_cv_accuracy_optimized(data_all_invest,5,100,"radial")
+acc_all = nested_cv_classifier(data_all_invest,5,100)
 print(acc_all)
 out_path = '/Users/xiaochunhan/Documents/Research/Projects/Brains_aligned_to_win/Supplement_analysis/S02_Hyperparameter_tuning'
 setwd(out_path)
 getwd()
-file_name = 'S02_Hyper_tune_full_model.csv'
+file_name = 'S02_Hyper_tune_full_model_svm-rbf.csv'
 write.csv(acc_all$accuracy_details,file_name, row.names = FALSE)
-```
-
-```{r svm_invest_INS&BINS}
-getwd()
-file_name = 'S02_Hyper_tune_full_model.csv'
-acc = read.csv(file_name)
-t.test(acc$accuracy, mu = 0.5)
 ```
 
 ### BOLD and FC
