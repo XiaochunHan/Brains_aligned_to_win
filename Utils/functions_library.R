@@ -1158,14 +1158,17 @@ nested_cv_classifier <- function(df, nfold, n_iter, classifier_type, permute_or_
                              iteration = i,
                              accuracy = mean(accuracies),
                              mean_C = mean(best_Cs),
-                             mean_gamma = mean(best_gammas)
+                             std_C = sd(best_Cs),
+                             mean_gamma = mean(best_gammas),
+                             std_gamma = sd(best_gammas)
                            ))
     } else {
       accuracy_all = rbind(accuracy_all, 
                            data.frame(
                              iteration = i,
                              accuracy = mean(accuracies),
-                             mean_C = mean(best_Cs)
+                             mean_C = mean(best_Cs),
+                             std_C = sd(best_Cs)
                            ))
     }
   }
@@ -1175,9 +1178,11 @@ nested_cv_classifier <- function(df, nfold, n_iter, classifier_type, permute_or_
   cat("\n嵌套交叉验证完成！\n")
   cat("平均准确率:", round(realMean, 4), "\n")
   cat("平均最佳C参数:", round(mean(accuracy_all$mean_C), 4), "\n")
+  cat("标准差最佳C参数:", round(mean(accuracy_all$std_C), 4), "\n")
   
   if (classifier_type == "svm-rbf") {
     cat("平均最佳γ参数:", round(mean(accuracy_all$mean_gamma), 6), "\n")
+    cat("标准差最佳γ参数:", round(mean(accuracy_all$std_gamma), 6), "\n")
   }
   
   # 初始化置信区间变量
@@ -1383,4 +1388,266 @@ acc_95CI <- function(y_true_all, y_score_all, nBoot) {
   CI95 <- quantile(acc_boot, c(0.025, 0.975))
   
   return(CI95)
+}
+
+#===============================================================================
+## Function33: tune_sensitive
+tune_sensitive <- function(df, params, nfold) {
+  # 创建参数网格
+  tune_grid = expand.grid(C = params$C_range, gamma = params$gamma_range)
+  
+  # 初始化存储每种组合准确率的矩阵
+  accuracy_matrix <- matrix(0, nrow = length(params$C_range), 
+                            ncol = length(params$gamma_range))
+  rownames(accuracy_matrix) <- params$C_range
+  colnames(accuracy_matrix) <- params$gamma_range
+  
+  best_accuracy = 0
+  best_params = list(C = 1, gamma = 1/ncol(df[-1]))
+  
+  folds = svm_createFolds(df, nfold)
+  
+  # 为每个参数组合计算准确率
+  for(j in 1:nrow(tune_grid)) {
+    accuracies = numeric(length(folds))
+    
+    for(k in 1:length(folds)) {
+      training = df[-folds[[k]], ]
+      test = df[folds[[k]], ]
+      
+      test[-1] = ind_scale(training[-1], test[-1])
+      training[-1] = scale(training[-1])
+      
+      classifier = svm(
+        formula = good_1 ~ .,
+        data = training,
+        type = 'C-classification',
+        kernel = "radial",
+        cost = 2**tune_grid$C[j],
+        gamma = 2**tune_grid$gamma[j]
+      )
+      
+      pred = predict(classifier, newdata = test[-1])
+      cm = table(test[, 1], pred)
+      accuracies[k] = sum(diag(cm)) / sum(cm)
+    }
+    
+    mean_accuracy = mean(accuracies)
+    
+    # 记录当前参数组合的准确率到矩阵中
+    c_index <- which(params$C_range == tune_grid$C[j])
+    gamma_index <- which(params$gamma_range == tune_grid$gamma[j])
+    accuracy_matrix[c_index, gamma_index] <- mean_accuracy
+    
+    if(mean_accuracy > best_accuracy) {
+      best_accuracy = mean_accuracy
+      best_params = list(C = tune_grid$C[j], gamma = tune_grid$gamma[j])
+    }
+  }
+  
+  # 打印每种参数组合的准确率
+  cat("每种C-γ组合的交叉验证准确率:\n")
+  print(round(accuracy_matrix, 4))
+  
+  # 绘制热图
+  draw_accuracy_heatmap(accuracy_matrix, params$C_range, params$gamma_range)
+  
+  return(list(
+    best_params = best_params, 
+    best_accuracy = best_accuracy,
+    accuracy_matrix = accuracy_matrix
+  ))
+}
+
+#===============================================================================
+## Function34: draw_accuracy_heatmap
+# 绘制准确率热图的函数
+draw_accuracy_heatmap <- function(accuracy_matrix, c_range, gamma_range) {
+  
+  # 将矩阵转换为长格式数据框
+  accuracy_df <- as.data.frame(accuracy_matrix)
+  colnames(accuracy_df) <- gamma_range
+  accuracy_df$C <- c_range
+  
+  # 转换数据格式
+  accuracy_melted <- melt(accuracy_df, id.vars = "C", 
+                          variable.name = "gamma", value.name = "accuracy")
+  accuracy_melted$gamma <- as.numeric(as.character(accuracy_melted$gamma))
+  
+  
+  # 绘制热图
+  p <- ggplot(accuracy_melted, aes(x = factor(gamma), y = factor(C), fill = accuracy)) +
+    geom_tile(color = "white") +
+    scale_fill_gradient2(low = "#4575B4", mid = "#FFFFBF",high = "#D73027", 
+                         midpoint = 0.75,
+                         limits = c(0.5,1)) +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1),
+          plot.title = element_text(hjust = 0.5),
+          plot.subtitle = element_text(hjust = 0.5))
+  
+  print(p)
+  
+  # 保存热图
+  ggsave("svm_parameter_tuning_heatmap.png", p, width = 10, height = 8, dpi = 300)
+  cat("热图已保存为 'svm_parameter_tuning_heatmap.png'\n")
+  
+  return(p)
+}
+
+#===============================================================================
+## Function35: auc_boot_cv
+auc_boot_cv <- function(df,nfold,koi,nBoot){
+  
+  df[,1] = factor(df[,1], levels = c(0, 1)) 
+  df = na.omit(df) 
+  auc_data = data.frame(matrix(nrow = nrow(df), ncol = 0));
+  folds = svm_createFolds(df,nfold) 
+  
+  y_true_all <- c()
+  y_score_all <- c()
+  
+  cv = lapply(folds, function(x) { 
+    training_fold = df[-x, ] 
+    test_fold = df[x, ] 
+    test_fold[-1] = ind_scale(training_fold[-1],test_fold[-1]) 
+    training_fold[-1] = scale(training_fold[-1]) 
+    
+    classifier = svm(formula = good_1 ~ ., 
+                     data = training_fold, 
+                     type = 'C-classification', 
+                     kernel = koi)
+    
+    y_pred = predict(classifier, newdata = test_fold[-1]) 
+    y_pred = factor(y_pred, ordered=TRUE) 
+    
+    return(list(test_fold[, 1], y_pred)) }) 
+  
+  auc_data$y_real = c(cv$Fold1[[1]],cv$Fold2[[1]],cv$Fold3[[1]],cv$Fold4[[1]],cv$Fold5[[1]]) 
+  auc_data$y_fit = c(cv$Fold1[[2]],cv$Fold2[[2]],cv$Fold3[[2]],cv$Fold4[[2]],cv$Fold5[[2]]) 
+  
+  roc_obj <- roc(auc_data$y_real, auc_data$y_fit, quiet = TRUE)
+  mean_auc <- as.numeric(auc(roc_obj))
+  
+  auc_boot <- numeric(nBoot)
+  N <- length(auc_data$y_real)
+  
+  for (b in 1:nBoot) {
+    idx <- sample(seq_len(N), size = N, replace = TRUE)
+    y_b <- auc_data$y_real[idx]
+    s_b <- auc_data$y_fit[idx]
+    
+    if (length(unique(y_b)) < 2) {
+      auc_boot[b] <- NA
+    } else {
+      auc_boot[b] <- as.numeric(auc(roc(y_b, s_b, quiet = TRUE)))
+    }
+  }
+  
+  auc_boot <- auc_boot[!is.na(auc_boot)]
+  CI95 <- quantile(auc_boot, c(0.025, 0.975))
+  
+  return(list(
+    mean_auc = mean_auc,
+    CI95 = CI95,
+    auc_boot = auc_boot,
+    y_true_all = auc_data$y_real,
+    y_score_all = auc_data$y_fit
+  ))
+}
+
+#===============================================================================
+## Function36: compare_svm_mcnemar
+compare_svm_mcnemar <- function(df1, df2, df3, nfold = 5) {
+  
+  #-------------------------#
+  # Helper: run CV and get predictions
+  #-------------------------#
+  run_cv <- function(df, folds) {
+    df[,1] <- factor(df[,1], levels = c(0,1))
+    df <- na.omit(df)
+    
+    cv_res <- lapply(folds, function(x) {
+      train_df <- df[-x,]
+      test_df  <- df[x,]
+      
+      # scaling
+      test_df[-1]  <- ind_scale(train_df[-1], test_df[-1])
+      train_df[-1] <- scale(train_df[-1])
+      
+      # SVM classification
+      clf <- svm(good_1 ~ ., data=train_df, type="C-classification", kernel="radial")
+      y_pred <- predict(clf, newdata=test_df[-1])
+      
+      return(list(y_true = test_df[,1], y_pred = y_pred))
+    })
+    
+    # combine out-of-fold predictions
+    y_true_all <- unlist(lapply(cv_res, function(x) x$y_true))
+    y_pred_all <- unlist(lapply(cv_res, function(x) x$y_pred))
+    
+    return(list(y_true = y_true_all, y_pred = y_pred_all))
+  }
+  
+  #-------------------------#
+  # Create same folds based on df1
+  #-------------------------#
+  df1[,1] <- factor(df1[,1], levels = c(0,1))
+  df1 <- na.omit(df1)
+  folds <- svm_createFolds(df1, nfold)
+  
+  #-------------------------#
+  # Run CV for each dataset
+  #-------------------------#
+  cv1 <- run_cv(df1, folds)
+  cv2 <- run_cv(df2, folds)
+  cv3 <- run_cv(df3, folds)
+  
+  y_real <- factor(cv1$y_true, levels = c(0,1))  # consistent true labels
+  
+  preds_list <- list(
+    SVM1 = cv1$y_pred,
+    SVM2 = cv2$y_pred,
+    SVM3 = cv3$y_pred
+  )
+  
+  model_names <- names(preds_list)
+  n_models <- length(preds_list)
+  
+  #-------------------------#
+  # Perform McNemar tests
+  #-------------------------#
+  results <- data.frame(
+    Model1 = character(),
+    Model2 = character(),
+    Statistic = numeric(),
+    P_value = numeric(),
+    stringsAsFactors = FALSE
+  )
+  
+  for (i in 1:(n_models - 1)) {
+    for (j in (i + 1):n_models) {
+      pred1 <- factor(preds_list[[i]], levels=c(0,1))
+      pred2 <- factor(preds_list[[j]], levels=c(0,1))
+      
+      correct1 <- pred1 == y_real
+      correct2 <- pred2 == y_real
+      
+      tbl <- table(correct1, correct2)
+      
+      test_res <- mcnemar.test(tbl, correct=TRUE)
+      
+      results <- rbind(
+        results,
+        data.frame(
+          Model1 = model_names[i],
+          Model2 = model_names[j],
+          Statistic = unname(test_res$statistic),
+          P_value = test_res$p.value
+        )
+      )
+    }
+  }
+  
+  return(results)
 }

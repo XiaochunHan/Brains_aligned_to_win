@@ -47,154 +47,123 @@ save(acc_all,file = file_name)
 
 ### BOLD and FC
 ```{r svm_invest_BOLD&FC}
-acc_bold_fc = svm_cv_accuracy_optimized(data_BOLD_FC_invest,5,100,"radial")
+acc_bold_fc = nested_cv_classifier(data_BOLD_FC_invest,5,1,'svm-rbf',FALSE)
 print(acc_bold_fc)
 out_path = '/Users/xiaochunhan/Documents/Research/Projects/Brains_aligned_to_win/Supplement_analysis/S02_Hyperparameter_tuning'
 setwd(out_path)
 getwd()
-file_name = 'S02_Hyper_tune_intra-brain_model.csv'
-write.csv(acc_bold_fc$accuracy_details,file_name, row.names = FALSE)
-```
-
-```{r svm_invest_INS&BINS}
-getwd()
-file_name = 'S02_Hyper_tune_intra-brain_model.csv'
-acc_ins_bins = read.csv(file_name)
-t.test(acc_ins_bins$accuracy, mu = 0.5)
+file_name = 'S02_Hyper_tune_intra-brain_model.RData'
+save(acc_bold_fc,file = file_name)
 ```
 
 ### INS and BINS
 ```{r svm_invest_INS&BINS}
-acc_ins_bins = svm_cv_accuracy_optimized(data_INS_BINS_invest,5,100,"acc_single","radial")
+acc_ins_bins = nested_cv_classifier(data_INS_BINS_invest,5,1,'svm-rbf',FALSE)
 print(acc_ins_bins)
 out_path = '/Users/xiaochunhan/Documents/Research/Projects/Brains_aligned_to_win/Supplement_analysis/S02_Hyperparameter_tuning'
 setwd(out_path)
 getwd()
-file_name = 'S02_Hyper_tune_inter-brain_model.csv'
-write.csv(acc_ins_bins$accuracy_details,file_name, row.names = FALSE)
-```
-
-```{r svm_invest_INS&BINS}
-getwd()
-file_name = 'S02_Hyper_tune_inter-brain_model.csv'
-acc_ins_bins = read.csv(file_name)
-t.test(acc_ins_bins$accuracy, mu = 0.5)
+file_name = 'S02_Hyper_tune_inter-brain_model.RData'
+save(acc_ins_bins,file = file_name)
 ```
 
 ## logistic_l2
 ### All features
 ```{r svm_invest_all}
-acc_all = nested_cv_classifier(data_all_invest,5,100,classifier_type = "logistic_l2")
+acc_all = nested_cv_classifier(data_all_invest,5,1,'logistic_l2',FALSE)
 print(acc_all)
-file_name = 'S02_Hyper_tune_full_model_logistic_l2.csv'
-write.csv(acc_all$accuracy_details,file_name, row.names = FALSE)
-```
-```{r svm_invest_INS&BINS}
-getwd()
-file_name = 'S02_Hyper_tune_full_model_logistic_l2.csv'
-acc = read.csv(file_name)
-t.test(acc$accuracy, mu = 0.5)
+file_name = 'S02_Hyper_tune_full_model_logistic_l2.RData'
+save(acc_all,file = file_name)
 ```
 
 ### BOLD and FC
 ```{r svm_invest_BOLD&FC}
-acc_bold_fc = nested_cv_classifier(data_BOLD_FC_invest,5,100,classifier_type = "logistic_l2")
+acc_bold_fc = nested_cv_classifier(data_BOLD_FC_invest,5,1,'logistic_l2',FALSE)
 print(acc_bold_fc)
-file_name = 'S02_Hyper_tune_intra-brain_model_logistic_l2.csv'
-write.csv(acc_bold_fc$accuracy_details,file_name, row.names = FALSE)
-t.test(acc_bold_fc$accuracy_details$accuracy, mu = 0.5)
+file_name = 'S02_Hyper_tune_intra-brain_model_logistic_l2.RData'
+save(acc_bold_fc,file = file_name)
 ```
 
 ### INS and BINS
 ```{r svm_invest_all}
-acc_ins_bins = nested_cv_classifier(data_INS_BINS_invest,5,100,classifier_type = "logistic_l2")
+acc_ins_bins = nested_cv_classifier(data_INS_BINS_invest,5,1,'logistic_l2',FALSE)
 print(acc_ins_bins)
-file_name = 'S02_Hyper_tune_inter-brain_model_logistic_l2.csv'
-write.csv(acc_ins_bins$accuracy_details,file_name, row.names = FALSE)
-t.test(acc_ins_bins$accuracy_details$accuracy, mu = 0.5)
+file_name = 'S02_Hyper_tune_inter-brain_model_logistic_l2.RData'
+save(acc_ins_bins,file = file_name)
 ```
 
 ## logistic_l1
 ### All features
 ```{r svm_invest_all}
-acc_all = nested_cv_classifier(data_all_invest,5,100,classifier_type = "logistic_l1",FALSE)
+acc_all = nested_cv_classifier(data_all_invest,5,1,'logistic_l1',FALSE)
 print(acc_all)
-file_name = 'S02_Hyper_tune_full_model_logistic_l1.csv'
-write.csv(acc_all$accuracy_details,file_name, row.names = FALSE)
-t.test(acc_all$accuracy_details$accuracy, mu = 0.5)
+file_name = 'S02_Hyper_tune_full_model_logistic_l1.RData'
+save(acc_all,file = file_name)
 ```
 
 
 ### BOLD and FC
 ```{r svm_invest_BOLD&FC}
-acc_bold_fc = nested_cv_classifier(data_BOLD_FC_invest,5,100,classifier_type = "logistic_l1",FALSE)
+acc_bold_fc = nested_cv_classifier(data_BOLD_FC_invest,5,1,'logistic_l1',FALSE)
 print(acc_bold_fc)
-file_name = 'S02_Hyper_tune_intra-brain_model_logistic_l1.csv'
-write.csv(acc_bold_fc$accuracy_details,file_name, row.names = FALSE)
-t.test(acc_bold_fc$accuracy_details$accuracy, mu = 0.5)
+file_name = 'S02_Hyper_tune_intra-brain_model_logistic_l1.RData'
+write.csv(acc_bold_fc,file = file_name)
 ```
 
 ### INS and BINS
 ```{r svm_invest_all}
-acc_ins_bins = nested_cv_classifier(data_INS_BINS_invest,5,100,classifier_type = "logistic_l1",FALSE)
+acc_ins_bins = nested_cv_classifier(data_INS_BINS_invest,5,1,'logistic_l1',FALSE)
 print(acc_ins_bins)
-file_name = 'S02_Hyper_tune_inter-brain_model_logistic_l1.csv'
-write.csv(acc_ins_bins$accuracy_details,file_name, row.names = FALSE)
-t.test(acc_ins_bins$accuracy_details$accuracy, mu = 0.5)
+file_name = 'S02_Hyper_tune_inter-brain_model_logistic_l1.RData'
+write.csv(acc_ins_bins,file = file_name)
 ```
 
 ## linear_svm_l2
 ### All features
 ```{r svm_invest_all}
-acc_all = nested_cv_classifier(data_all_invest,5,100,classifier_type = "linear_svm_l2")
+acc_all = nested_cv_classifier(data_all_invest,5,1,'linear_svm_l2',FALSE)
 print(acc_all)
-file_name = 'S02_Hyper_tune_full_model_linear_svm_l2.csv'
-write.csv(acc_all$accuracy_details,file_name, row.names = FALSE)
-t.test(acc_all$accuracy_details$accuracy, mu = 0.5)
+file_name = 'S02_Hyper_tune_full_model_linear_svm_l2.RData'
+write.csv(acc_all,file = file_name)
 ```
 
 ### BOLD and FC
 ```{r svm_invest_BOLD&FC}
-acc_bold_fc = nested_cv_classifier(data_BOLD_FC_invest,5,100,classifier_type = "linear_svm_l2")
+acc_bold_fc = nested_cv_classifier(data_BOLD_FC_invest,5,1,'linear_svm_l2',FALSE)
 print(acc_bold_fc)
-file_name = 'S02_Hyper_tune_intra-brain_model_linear_svm_l2.csv'
-write.csv(acc_bold_fc$accuracy_details,file_name, row.names = FALSE)
-t.test(acc_bold_fc$accuracy_details$accuracy, mu = 0.5)
+file_name = 'S02_Hyper_tune_intra-brain_model_linear_svm_l2.RData'
+write.csv(acc_bold_fc,file = file_name)
 ```
 
 ### INS and BINS
 ```{r svm_invest_all}
-acc_ins_bins = nested_cv_classifier(data_INS_BINS_invest,5,100,classifier_type = "linear_svm_l2")
+acc_ins_bins = nested_cv_classifier(data_INS_BINS_invest,5,1,'linear_svm_l2',FALSE)
 print(acc_ins_bins)
-file_name = 'S02_Hyper_tune_inter-brain_model_linear_svm_l2.csv'
-write.csv(acc_ins_bins$accuracy_details,file_name, row.names = FALSE)
-t.test(acc_ins_bins$accuracy_details$accuracy, mu = 0.5)
+file_name = 'S02_Hyper_tune_inter-brain_model_linear_svm_l2.RData'
+write.csv(acc_ins_bins,file = file_name)
 ```
 
 ## linear_svm_l1
 ### All features
 ```{r svm_invest_all}
-acc_all = nested_cv_classifier(data_all_invest,5,100,classifier_type = "linear_svm_l1")
+acc_all = nested_cv_classifier(data_all_invest,5,1,'linear_svm_l1',FALSE)
 print(acc_all)
-file_name = 'S02_Hyper_tune_full_model_linear_svm_l1.csv'
-write.csv(acc_all$accuracy_details,file_name, row.names = FALSE)
-t.test(acc_all$accuracy_details$accuracy, mu = 0.5)
+file_name = 'S02_Hyper_tune_full_model_linear_svm_l1.RData'
+write.csv(acc_all,file = file_name)
 ```
 
 ### BOLD and FC
 ```{r svm_invest_BOLD&FC}
-acc_bold_fc = nested_cv_classifier(data_BOLD_FC_invest,5,100,classifier_type = "linear_svm_l1")
+acc_bold_fc = nested_cv_classifier(data_BOLD_FC_invest,5,1,'linear_svm_l1',FALSE)
 print(acc_bold_fc)
-file_name = 'S02_Hyper_tune_intra-brain_model_linear_svm_l1.csv'
-write.csv(acc_bold_fc$accuracy_details,file_name, row.names = FALSE)
-t.test(acc_bold_fc$accuracy_details$accuracy, mu = 0.5)
+file_name = 'S02_Hyper_tune_intra-brain_model_linear_svm_l1.RData'
+write.csv(acc_bold_fc,file = file_name)
 ```
 
 ### INS and BINS
 ```{r svm_invest_all}
-acc_ins_bins = nested_cv_classifier(data_INS_BINS_invest,5,100,classifier_type = "linear_svm_l1")
+acc_ins_bins = nested_cv_classifier(data_INS_BINS_invest,5,1,'linear_svm_l1',FALSE)
 print(acc_ins_bins)
-file_name = 'S02_Hyper_tune_inter-brain_model_linear_svm_l1.csv'
-write.csv(acc_ins_bins$accuracy_details,file_name, row.names = FALSE)
-t.test(acc_ins_bins$accuracy_details$accuracy, mu = 0.5)
+file_name = 'S02_Hyper_tune_inter-brain_model_linear_svm_l1.RData'
+write.csv(acc_ins_bins,file = file_name)
 ```
