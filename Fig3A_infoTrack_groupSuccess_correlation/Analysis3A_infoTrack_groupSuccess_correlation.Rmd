@@ -1,0 +1,51 @@
+---
+title: "Analysis3A_infoTrack_groupSuccess_correlation"
+author: "Xiaochun Han"
+date: "2023-12-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+source("../utils/functions_library.R")
+load_packages(c("dplyr", "caret", "e1071","ggplot2", "pROC", "reshape2", "rstatix","plotrix","psych","readxl","ggpubr","car"))
+```
+
+## reorg data
+```{r reorg data}
+tr <- read_excel('DAFD_Behavior_Neural_30sess_behav_cor_LIME_20250522.xlsx',sheet="raw_data")
+groupSuccess = tr$suss[1:30]
+InfoTrack_Attack_Lead = tr[((tr$roleA1D2 == 1)&(tr$leadL1F2==1)),
+                                   c("detaC_within_Tmean","detaC_within_TG","detaC_between_TG")]
+InfoTrack_Attack_Follow = tr[((tr$roleA1D2 == 1)&(tr$leadL1F2==0)),
+                                   c("detaC_within_Tmean","detaC_within_TG","detaC_between_TG")]
+InfoTrack_Defend_Lead = tr[((tr$roleA1D2 == 2)&(tr$leadL1F2==1)),
+                                   c("detaC_within_Tmean","detaC_within_TG","detaC_between_TG")]
+InfoTrack_Defend_Follow = tr[((tr$roleA1D2 == 2)&(tr$leadL1F2==0)),
+                                   c("detaC_within_Tmean","detaC_within_TG","detaC_between_TG")]
+
+names(InfoTrack_Attack_Lead) = c("AL_detaC_within_Tmean","AL_detaC_within_TG","AL_detaC_between_TG")
+names(InfoTrack_Attack_Follow) = c("AF_detaC_within_Tmean","AF_detaC_within_TG","AF_detaC_between_TG")
+names(InfoTrack_Defend_Lead) = c("DL_detaC_within_Tmean","DL_detaC_within_TG","DL_detaC_between_TG")
+names(InfoTrack_Defend_Follow) = c("DF_detaC_within_Tmean","DF_detaC_within_TG","DF_detaC_between_TG")
+
+df_org_infoTrack = cbind(groupSuccess,InfoTrack_Attack_Lead,InfoTrack_Attack_Follow,InfoTrack_Defend_Lead,InfoTrack_Defend_Follow)
+```
+
+## Regression
+### linear - infoTrack
+```{r linear}
+model <- lm(groupSuccess ~ ., data = df_org_infoTrack)
+summary(model)
+vif(model)
+
+mr = data.frame(df_org_infoTrack$groupSuccess, model$fitted.values)
+names(mr) = c("measuredSuccess", "predictedSuccess")
+
+p <- ggplot(mr, aes(x=measuredSuccess, y=predictedSuccess)) +
+  geom_point(color="#0D0D0D", size = 4, alpha = 0.8) +
+  geom_smooth(method=lm , color="black", se=TRUE) +
+  theme_classic()
+print(p)
+```
