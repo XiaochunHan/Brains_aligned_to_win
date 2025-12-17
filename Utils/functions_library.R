@@ -879,6 +879,7 @@ lm_perm <- function(df,nfold,n_iter,out_mat){
     })
     permMean = rbind(permMean,mean(as.numeric(cv)))
   }
+  colnames(permMean) = 'lm_perm'
   return(permMean)
 }
 

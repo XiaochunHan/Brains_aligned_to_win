@@ -1,0 +1,258 @@
+---
+title: "Analysis3BC_infoTrack_PNICO_correlation"
+author: "Xiaochun Han"
+date: "2023-12-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+source("../utils/functions_library.R")
+load_packages(c("dplyr", "caret", "e1071","ggplot2", "pROC", "reshape2", "rstatix","plotrix","psych","readxl","ggpubr","car"))
+```
+
+## Import regress data
+```{r import_data}
+tr <- read_excel('DAFD_Behavior_Neural_30sess_behav_cor_AllINS_20250524.xlsx',sheet="raw_data")
+
+#Attacker-Leader-WNC
+beh_ALW_alpha1 = tr[((tr$roleA1D2 == 1)&(tr$leadL1F2==1)),c("detaC_within_Tmean")]
+beh_ALW_alpha2 = tr[((tr$roleA1D2 == 1)&(tr$leadL1F2==1)),c("detaC_within_TG")]
+neural_ALW = tr[((tr$roleA1D2 == 1)&(tr$leadL1F2==1)),grepl('WINS_CH', colnames(tr))]
+df_org_ALW_alpha1 = cbind(beh_ALW_alpha1,neural_ALW)
+df_org_ALW_alpha2 = cbind(beh_ALW_alpha2,neural_ALW)
+
+#Attacker-Leader-BNC
+beh_ALB = tr[((tr$roleA1D2 == 1)&(tr$leadL1F2==1)),c("detaC_between_TG")]
+neural_ALB = tr[((tr$roleA1D2 == 1)&(tr$leadL1F2==1)),grepl('BINS_CH', colnames(tr))]
+df_org_ALB = cbind(beh_ALB,neural_ALB)
+
+#Attacker-Follower-WNC
+beh_AFW_alpha1 = tr[((tr$roleA1D2 == 1)&(tr$leadL1F2==0)),c("detaC_within_Tmean")]
+beh_AFW_alpha2 = tr[((tr$roleA1D2 == 1)&(tr$leadL1F2==0)),c("detaC_within_TG")]
+neural_AFW = tr[((tr$roleA1D2 == 1)&(tr$leadL1F2==0)),grepl('WINS_CH', colnames(tr))]
+df_org_AFW_alpha1 = cbind(beh_AFW_alpha1,neural_AFW)
+df_org_AFW_alpha2 = cbind(beh_AFW_alpha2,neural_AFW)
+
+#Attacker-Follower-BNC
+beh_AFB = tr[((tr$roleA1D2 == 1)&(tr$leadL1F2==0)),c("detaC_between_TG")]
+neural_AFB = tr[((tr$roleA1D2 == 1)&(tr$leadL1F2==0)),grepl('BINS_CH', colnames(tr))]
+df_org_AFB = cbind(beh_AFB,neural_AFB)
+
+#Defender-Leader-WNC
+beh_DLW_alpha1 = tr[((tr$roleA1D2 == 2)&(tr$leadL1F2==1)),c("detaC_within_Tmean")]
+beh_DLW_alpha2 = tr[((tr$roleA1D2 == 2)&(tr$leadL1F2==1)),c("detaC_within_TG")]
+neural_DLW = tr[((tr$roleA1D2 == 2)&(tr$leadL1F2==1)),grepl('WINS_CH', colnames(tr))]
+df_org_DLW_alpha1 = cbind(beh_DLW_alpha1,neural_DLW)
+df_org_DLW_alpha2 = cbind(beh_DLW_alpha2,neural_DLW)
+
+#Defender-Leader-BNC
+beh_DLB = tr[((tr$roleA1D2 == 2)&(tr$leadL1F2==1)),c("detaC_between_TG")]
+neural_DLB = tr[((tr$roleA1D2 == 2)&(tr$leadL1F2==1)),grepl('BINS_CH', colnames(tr))]
+df_org_DLB = cbind(beh_DLB,neural_DLB)
+
+#Defender-Follower-WNC
+beh_DFW_alpha1 = tr[((tr$roleA1D2 == 2)&(tr$leadL1F2==0)),c("detaC_within_Tmean")]
+beh_DFW_alpha2 = tr[((tr$roleA1D2 == 2)&(tr$leadL1F2==0)),c("detaC_within_TG")]
+neural_DFW = tr[((tr$roleA1D2 == 2)&(tr$leadL1F2==0)),grepl('WINS_CH', colnames(tr))]
+df_org_DFW_alpha1 = cbind(beh_DFW_alpha1,neural_DFW)
+df_org_DFW_alpha2 = cbind(beh_DFW_alpha2,neural_DFW)
+
+#Defender-Follower-BNC
+beh_DFB = tr[((tr$roleA1D2 == 2)&(tr$leadL1F2==0)),c("detaC_between_TG")]
+neural_DFB = tr[((tr$roleA1D2 == 2)&(tr$leadL1F2==0)),grepl('BINS_CH', colnames(tr))]
+df_org_DFB = cbind(beh_DFB,neural_DFB)
+```
+## Regression Analysis
+```{r Regress_analysis}
+model_list <- list(
+#Attacker-leader
+ALW_alpha1 <- lm(detaC_within_Tmean ~ ., data = df_org_ALW_alpha1),
+ALW_alpha2 <- lm(detaC_within_TG ~ ., data = df_org_ALW_alpha2),
+ALB_beta1 <- lm(detaC_between_TG ~ ., data = df_org_ALB),
+
+#Attacker-follower
+AFW_alpha1 <- lm(detaC_within_Tmean ~ ., data = df_org_AFW_alpha1),
+AFW_alpha2 <- lm(detaC_within_TG ~ ., data = df_org_AFW_alpha2),
+AFB_beta1 <- lm(detaC_between_TG ~ ., data = df_org_AFB),
+
+#Defender-leader
+DLW_alpha1 <- lm(detaC_within_Tmean ~ ., data = df_org_DLW_alpha1),
+DLW_alpha2 <- lm(detaC_within_TG ~ ., data = df_org_DLW_alpha2),
+DLB_beta1 <- lm(detaC_between_TG ~ ., data = df_org_DLB),
+
+#Defender-follower
+DFW_alpha1 <- lm(detaC_within_Tmean ~ ., data = df_org_DFW_alpha1),
+DFW_alpha2 <- lm(detaC_within_TG ~ ., data = df_org_DFW_alpha2),
+DFB_beta1 <- lm(detaC_between_TG ~ ., data = df_org_DFB)
+)
+
+R2 <- data.frame(
+  Model_Name = c("ALW_alpha1","ALW_alpha2","ALB_beta1",
+                 "AFW_alpha1","AFW_alpha2","AFB_beta1",
+                 "DLW_alpha1","DLW_alpha2","DLB_beta1",
+                 "DFW_alpha1","DFW_alpha2","DFB_beta1"),
+  R_squared = numeric(length(model_list)),
+  stringsAsFactors = FALSE
+)
+
+for (i in seq_along(model_list)) {
+  model_summary <- summary(model_list[[i]])
+  R2$R_squared[i] <- model_summary$r.squared
+}
+
+print(R2)
+```
+
+## Regression cross-validation
+```{r cross_valid}
+cv_list <- list(
+#Attacker-leader
+cv_ALW_alpha1 = lm_cv_correlation(df_org_ALW_alpha1,5,100,'mse_value'),
+cv_ALW_alpha2 = lm_cv_correlation(df_org_ALW_alpha2,5,100,'mse_value'),
+cv_ALB_beta1 = lm_cv_correlation(df_org_ALB,5,100,'mse_value'),
+
+#Attacker-follower
+cv_AFW_alpha1 = lm_cv_correlation(df_org_AFW_alpha1,5,100,'mse_value'),
+cv_AFW_alpha2 = lm_cv_correlation(df_org_AFW_alpha2,5,100,'mse_value'),
+cv_AFB_beta1 = lm_cv_correlation(df_org_AFB,5,100,'mse_value'),
+
+#Defender-leader
+cv_DLW_alpha1 = lm_cv_correlation(df_org_DLW_alpha1,5,100,'mse_value'),
+cv_DLW_alpha2 = lm_cv_correlation(df_org_DLW_alpha2,5,100,'mse_value'),
+cv_DLB_beta1 = lm_cv_correlation(df_org_DLB,5,100,'mse_value'),
+
+#Defender-follower
+cv_DFW_alpha1 = lm_cv_correlation(df_org_DFW_alpha1,5,100,'mse_value'),
+cv_DFW_alpha2 = lm_cv_correlation(df_org_DFW_alpha2,5,100,'mse_value'),
+cv_DFB_beta1 = lm_cv_correlation(df_org_DFB,5,100,'mse_value')
+)
+
+MSE <- data.frame(
+  mse_values = sapply(cv_list, function(x) x),
+  stringsAsFactors = FALSE
+)
+
+print(MSE)
+```
+
+## Permutation cross-validation
+```{r permutation, eval=FALSE}
+#Attacker-leader
+perm_ALW_alpha1 = lm_perm(df_org_ALW_alpha1,5,5000,'mse_value')
+perm_ALW_alpha2 = lm_perm(df_org_ALW_alpha2,5,5000,'mse_value')
+perm_ALB_beta1 = lm_perm(df_org_ALB,5,5000,'mse_value')
+
+#Attacker-follower
+perm_AFW_alpha1 = lm_perm(df_org_AFW_alpha1,5,5000,'mse_value')
+perm_AFW_alpha2 = lm_perm(df_org_AFW_alpha2,5,5000,'mse_value')
+perm_AFB_beta1 = lm_perm(df_org_AFB,5,5000,'mse_value')
+
+#Defender-leader
+perm_DLW_alpha1 = lm_perm(df_org_DLW_alpha1,5,5000,'mse_value')
+perm_DLW_alpha2 = lm_perm(df_org_DLW_alpha2,5,5000,'mse_value')
+perm_DLB_beta1 = lm_perm(df_org_DLB,5,5000,'mse_value')
+
+#Defender-follower
+perm_DFW_alpha1 = lm_perm(df_org_DFW_alpha1,5,5000,'mse_value')
+perm_DFW_alpha2 = lm_perm(df_org_DFW_alpha2,5,5000,'mse_value')
+perm_DFB_beta1 = lm_perm(df_org_DFB,5,5000,'mse_value')
+```
+
+### Permutation save
+```{r perm_save, eval=FALSE}
+#Attacker-leader
+saveRDS(perm_ALW_alpha1, "lm_perm_ALW_alpha1_5000_mse.RData")
+saveRDS(perm_ALW_alpha2, "lm_perm_ALW_alpha2_5000_mse.RData")
+saveRDS(perm_ALB_beta1, "lm_perm_ALB_beta1_5000_mse.RData")
+
+#Attacker-follower
+saveRDS(perm_AFW_alpha1, "lm_perm_AFW_alpha1_5000_mse.RData")
+saveRDS(perm_AFW_alpha2, "lm_perm_AFW_alpha2_5000_mse.RData")
+saveRDS(perm_AFB_beta1, "lm_perm_AFB_beta1_5000_mse.RData")
+
+#Defender-leader
+saveRDS(perm_DLW_alpha1, "lm_perm_DLW_alpha1_5000_mse.RData")
+saveRDS(perm_DLW_alpha2, "lm_perm_DLW_alpha2_5000_mse.RData")
+saveRDS(perm_DLB_beta1, "lm_perm_DLB_beta1_5000_mse.RData")
+
+#Defender-follower
+saveRDS(perm_DFW_alpha1, "lm_perm_DFW_alpha1_5000_mse.RData")
+saveRDS(perm_DFW_alpha2, "lm_perm_DFW_alpha2_5000_mse.RData")
+saveRDS(perm_DFB_beta1, "lm_perm_DFB_beta1_5000_mse.RData")
+```
+
+### Permutation read
+```{r perm_read}
+#Attacker-leader
+perm_ALW_alpha1 = readRDS("lm_perm_ALW_alpha1_5000_mse.RData")
+perm_ALW_alpha2 = readRDS("lm_perm_ALW_alpha2_5000_mse.RData")
+perm_ALB_beta1 = readRDS("lm_perm_ALB_beta1_5000_mse.RData")
+
+#Attacker-follower
+perm_AFW_alpha1 = readRDS("lm_perm_AFW_alpha1_5000_mse.RData")
+perm_AFW_alpha2 = readRDS("lm_perm_AFW_alpha2_5000_mse.RData")
+perm_AFB_beta1 = readRDS("lm_perm_AFB_beta1_5000_mse.RData")
+
+#Defender-leader
+perm_DLW_alpha1 = readRDS("lm_perm_DLW_alpha1_5000_mse.RData")
+perm_DLW_alpha2 = readRDS("lm_perm_DLW_alpha2_5000_mse.RData")
+perm_DLB_beta1 = readRDS("lm_perm_DLB_beta1_5000_mse.RData")
+
+#Defender-follower
+perm_DFW_alpha1 = readRDS("lm_perm_DFW_alpha1_5000_mse.RData")
+perm_DFW_alpha2 = readRDS("lm_perm_DFW_alpha2_5000_mse.RData")
+perm_DFB_beta1 = readRDS("lm_perm_DFB_beta1_5000_mse.RData")
+```
+
+### Permutation p value
+```{r Summary_R2}
+p_perm_list <- list(
+  p_perm_ALW_alpha1 = mean(cv_list$cv_ALW_alpha1>perm_ALW_alpha1$lm_perm),
+  p_perm_ALW_alpha2 = mean(cv_list$cv_ALW_alpha2>perm_ALW_alpha2$lm_perm),
+  p_perm_ALB_beta1 = mean(cv_list$cv_ALB_beta1>perm_ALB_beta1$lm_perm),
+  p_perm_AFW_alpha1 = mean(cv_list$cv_AFW_alpha1>perm_AFW_alpha1$lm_perm),
+  p_perm_AFW_alpha2 = mean(cv_list$cv_AFW_alpha2>perm_AFW_alpha2$lm_perm),
+  p_perm_AFB_beta1 = mean(cv_list$cv_AFB_beta1>perm_AFB_beta1$lm_perm),
+  p_perm_DLW_alpha1 = mean(cv_list$cv_DLW_alpha1>perm_DLW_alpha1$lm_perm),
+  p_perm_DLW_alpha2 = mean(cv_list$cv_DLW_alpha2>perm_DLW_alpha2$lm_perm),
+  p_perm_DLB_beta1 = mean(cv_list$cv_DLB_beta1>perm_DLB_beta1$lm_perm),
+  p_perm_DFW_alpha1 = mean(cv_list$cv_DFW_alpha1>perm_DFW_alpha1$lm_perm),
+  p_perm_DFW_alpha2 = mean(cv_list$cv_DFW_alpha2>perm_DFW_alpha2$lm_perm),
+  p_perm_DFB_beta1 = mean(cv_list$cv_DFB_beta1>perm_DFB_beta1$lm_perm)
+)
+
+p_perm <- data.frame(
+  p_values = sapply(p_perm_list, function(x) x),
+  stringsAsFactors = FALSE
+)
+
+print(p_perm)
+```
+## Significant figures
+### ALB_beta1
+```{r ALB_fig}
+ALB_fig = data.frame(df_org_ALB$detaC_between_TG, model_list[[3]]$fitted.values)
+names(ALB_fig) = c("trueBeta1", "predictedBeta1")
+
+p<-ggplot(ALB_fig, aes(x=trueBeta1, y=predictedBeta1)) +
+  geom_point(color="#DA6F6F", size = 4, alpha = 0.8) +
+  geom_smooth(method=lm , color="#0D0D0D", se=TRUE) +
+  theme_classic()
+
+print(p)
+```
+
+### AFW_alpha2
+```{r AFW_fig}
+AFW_fig = data.frame(df_org_AFW_alpha2$detaC_within_TG, model_list[[5]]$fitted.values)
+names(AFW_fig) = c("trueAlpha2", "predictedAlpha2")
+
+p<-ggplot(AFW_fig, aes(x=trueAlpha2, y=predictedAlpha2)) +
+  geom_point(color="#DA6F6F", size = 4, alpha = 0.5) +
+  geom_smooth(method=lm , color="#0D0D0D", se=TRUE) +
+  theme_classic()
+
+print(p)
+```
