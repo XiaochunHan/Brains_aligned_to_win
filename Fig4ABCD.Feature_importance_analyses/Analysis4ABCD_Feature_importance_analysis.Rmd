@@ -42,10 +42,10 @@ saveRDS(fi_fs_invest, file = "fi_all_invest_WNS_BNS_5000.RData")
 ### Feature importance read
 ```{r read_feat_impor}
 fi_fs_invest = readRDS("fi_all_invest_WNS_BNS_5000.RData")
-
+acc_ins_bins = 0.9212
 dec_acc = vector(length = 112)
 for (v in 1:length(fi_fs_invest)){
-  dec_acc[v] = fi_fs_invest[[v]][[3]][[1]]*100
+  dec_acc[v] = (acc_ins_bins - mean(fi_fs_invest[[v]][[2]]$acc_perm))*100
 }
 
 fi_all <- data.frame(
@@ -78,3 +78,77 @@ for (i in 1:n_groups) {
   cat("\n\n")
 }
 ```
+
+## Attack vs. Defender
+### ttest
+```{r ttest-fi-ad}
+fi_A = fi_all$fi_value_percent[grepl('_Attack_', fi_all$name)]
+fi_D = fi_all$fi_value_percent[grepl('_Defend_', fi_all$name)]
+df = data.frame(fi_A, fi_D)
+df <- df %>% gather(key = "feature", value = "value")
+df %>% group_by(feature) %>% summarize(mean = mean(value), sd = sd(value))
+t.test(value~feature, data = df, var.equal = TRUE)
+cohens_d(value~feature, data = df, var.equal = TRUE)
+```
+
+### figure
+```{r figure-fi-ad}
+summary_data <- df %>% group_by(feature) %>% summarize(Mean = mean(value), SE = sd(value)/sqrt(n()))
+p<-ggplot(summary_data, aes(x = feature, y = Mean, fill = feature)) +
+  geom_hline(aes(yintercept = 0), color = "black", linewidth = 0.8, linetype = 1) +
+  geom_col(width = 0.6, color = "black") +
+  scale_fill_manual(values = c("#0D0D0D","#BFBFBF"))+
+  geom_jitter(
+    data = df,
+    aes(y = value, x = feature),
+    width = 0, size = 2, alpha = 0.6, color = "grey"
+  ) +
+  geom_errorbar(
+    aes(ymin = Mean - SE, ymax = Mean + SE),
+    width = 0.2, color = "black", size = 0.5
+  ) +
+  scale_y_continuous(
+    limits = c(-0.5, 1),              
+    breaks = c(-0.5, 0, 0.5, 1)  
+  )  +
+  theme_classic()+
+  theme(legend.position = "none")
+print(p)
+```
+
+## Leader vs. Follower
+### ttest
+```{r ttest-fi-lf}
+fi_L = fi_all$fi_value_percent[grepl('_L_', fi_all$name)]
+fi_F = fi_all$fi_value_percent[grepl('_F_', fi_all$name)]
+df = data.frame(fi_L, fi_F)
+df <- df %>% gather(key = "feature", value = "value")
+df %>% group_by(feature) %>% summarize(mean = mean(value), sd = sd(value))
+t.test(value~feature, data = df, var.equal = TRUE)
+cohens_d(value~feature, data = df, var.equal = TRUE)
+```
+
+### figure
+```{r figure-fi-lf}
+summary_data <- df %>% group_by(feature) %>% summarize(Mean = mean(value), SE = sd(value)/sqrt(n()))
+summary_data$feature = factor(summary_data$feature, levels = c("fi_L","fi_F"))
+p<-ggplot(summary_data, aes(x = feature, y = Mean, fill = feature)) +
+  geom_hline(aes(yintercept = 0), color = "black", linewidth = 0.8, linetype = 1) +
+  geom_col(width = 0.6, color = "black") +
+  scale_fill_manual(values = c("#DA6F6F","#F29697"))+
+  geom_jitter(
+    data = df,
+    aes(y = value, x = feature),
+    width = 0, size = 2, alpha = 0.6, color = "grey"
+  ) +
+  geom_errorbar(
+    aes(ymin = Mean - SE, ymax = Mean + SE),
+    width = 0.2, color = "black", size = 0.5
+  ) +
+  scale_y_continuous(
+    limits = c(-0.5, 1),                
+    breaks = c(-0.5, 0, 0.5, 1)  
+  ) +
+  theme_classic()+
+  theme(legend.position = "none")
+print(p)

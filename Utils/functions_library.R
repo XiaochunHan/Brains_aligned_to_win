@@ -157,7 +157,6 @@ svm_feat_impor <- function(df,feat,nfold,nCV,nPerm){
                        width = 50,   # Progress bar width. Defaults to getOption("width")
                        char = "=")   # Character used to create the bar
   df_perm = df
-  acc_true = svm_cv_accuracy(df,nfold,nCV,"acc","radial")
   acc_perm = data.frame();
   for (i in 1:nPerm){
     setTxtProgressBar(pb, i)
@@ -181,9 +180,7 @@ svm_feat_impor <- function(df,feat,nfold,nCV,nPerm){
     acc_perm = rbind(acc_perm,mean(as.numeric(cv)))
     colnames(acc_perm) = c("acc_perm")
   }
-  acc_diff = acc_true - colMeans(acc_perm)
-  p = mean(acc_true < acc_perm)
-  return(list(acc_true,acc_perm,acc_diff,p))
+  return(acc_perm)
 }
 
 #===============================================================================
