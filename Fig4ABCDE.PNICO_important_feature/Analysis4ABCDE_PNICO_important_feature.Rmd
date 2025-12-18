@@ -24,7 +24,7 @@ dataset_y_attack <- dataset_y_attack[-c(4,14,22),] # Three sessions are deleted 
 
 WNS_mean = extract_win_or_pay_mean(dataset_WNS,dataset_y_attack,"WNS_","win",FALSE)
 BNS_mean = extract_win_or_pay_mean(dataset_BNS,dataset_y_attack,"BNS_","win",FALSE)
-data_WNS_BNS_invest = cbind(WNS_mean[,c(1,4:ncol(WNS_mean))],BNS_mean[,4:ncol(BNS_mean)])
+data_WNS_BNS_invest = cbind(WNS_mean[,c(1,3:ncol(WNS_mean))],BNS_mean[,3:ncol(BNS_mean)])
 ```
 
 ## Feature importance analysis

@@ -28,22 +28,22 @@ BOLD_mean = extract_win_or_pay_mean(dataset_BOLD,dataset_y_attack,"BOLD_","win",
 FC_mean = extract_win_or_pay_mean(dataset_FC,dataset_y_attack,"FC_","win",FALSE)
 INS_mean = extract_win_or_pay_mean(dataset_INS,dataset_y_attack,"WNS_","win",FALSE)
 BINS_mean = extract_win_or_pay_mean(dataset_BINS,dataset_y_attack,"BNS_","win",FALSE)
-data_all_invest = cbind(BOLD_mean[,c(1,4:ncol(BOLD_mean))],FC_mean[,4:ncol(FC_mean)],INS_mean[,4:ncol(INS_mean)],BINS_mean[,4:ncol(BINS_mean)])
+data_all_invest = cbind(BOLD_mean[,c(1,3:ncol(BOLD_mean))],FC_mean[,3:ncol(FC_mean)],INS_mean[,3:ncol(INS_mean)],BINS_mean[,3:ncol(BINS_mean)])
 data_all_invest_rev = data_all_invest[rev(rownames(data_all_invest)),]
 data_all_invest_both = as.matrix(data_all_invest_rev[,2:ncol(data_all_invest_rev)])
 
-data_INS_BINS_invest = cbind(INS_mean[,c(1,4:ncol(INS_mean))],BINS_mean[,4:ncol(BINS_mean)])
-data_BOLD_FC_invest = cbind(BOLD_mean[,c(1,4:ncol(BOLD_mean))],FC_mean[,4:ncol(FC_mean)])
+data_INS_BINS_invest = cbind(INS_mean[,c(1,3:ncol(INS_mean))],BINS_mean[,3:ncol(BINS_mean)])
+data_BOLD_FC_invest = cbind(BOLD_mean[,c(1,3:ncol(BOLD_mean))],FC_mean[,3:ncol(FC_mean)])
 
-data_WNS_invest = INS_mean[,c(1,4:ncol(INS_mean))]
-data_BNS_invest = BINS_mean[,c(1,4:ncol(BINS_mean))]
-data_BOLD_invest = BOLD_mean[,c(1,4:ncol(BOLD_mean))]
-data_FC_invest = FC_mean[,c(1,4:ncol(FC_mean))]
+data_WNS_invest = INS_mean[,c(1,3:ncol(INS_mean))]
+data_BNS_invest = BINS_mean[,c(1,3:ncol(BINS_mean))]
+data_BOLD_invest = BOLD_mean[,c(1,3:ncol(BOLD_mean))]
+data_FC_invest = FC_mean[,c(1,3:ncol(FC_mean))]
 
-data_minus_WNS_invest = cbind(BINS_mean[,c(1,4:ncol(BINS_mean))],BOLD_mean[,4:ncol(BOLD_mean)],FC_mean[,4:ncol(FC_mean)])
-data_minus_BNS_invest = cbind(INS_mean[,c(1,4:ncol(INS_mean))],BOLD_mean[,4:ncol(BOLD_mean)],FC_mean[,4:ncol(FC_mean)])
-data_minus_BOLD_invest = cbind(INS_mean[,c(1,4:ncol(INS_mean))],BINS_mean[,4:ncol(BINS_mean)],FC_mean[,4:ncol(FC_mean)])
-data_minus_FC_invest = cbind(INS_mean[,c(1,4:ncol(INS_mean))],BINS_mean[,4:ncol(BINS_mean)],BOLD_mean[,4:ncol(BOLD_mean)])
+data_minus_WNS_invest = cbind(BINS_mean[,c(1,3:ncol(BINS_mean))],BOLD_mean[,3:ncol(BOLD_mean)],FC_mean[,3:ncol(FC_mean)])
+data_minus_BNS_invest = cbind(INS_mean[,c(1,3:ncol(INS_mean))],BOLD_mean[,3:ncol(BOLD_mean)],FC_mean[,3:ncol(FC_mean)])
+data_minus_BOLD_invest = cbind(INS_mean[,c(1,3:ncol(INS_mean))],BINS_mean[,3:ncol(BINS_mean)],FC_mean[,3:ncol(FC_mean)])
+data_minus_FC_invest = cbind(INS_mean[,c(1,3:ncol(INS_mean))],BINS_mean[,3:ncol(BINS_mean)],BOLD_mean[,3:ncol(BOLD_mean)])
 ```
 ## Heatmap
 ### Both win and lose
@@ -54,66 +54,66 @@ heatmap(data_all_invest_both,Colv = NA, Rowv = NA, scale = "column", col = hcl.c
 ## Predicting win vs. lose
 ### All features
 ```{r svm_invest_all}
-acc_all = svm_cv_accuracy(data_all_invest,5,100,"acc_single","radial")
+acc_all = svm_cv_accuracy(data_all_invest,5,100,"radial")
 print(acc_all)
 ```
 
 ### BOLD and FC
 ```{r svm_invest_BOLD&FC}
-acc_bold_fc = svm_cv_accuracy(data_BOLD_FC_invest,5,100,"acc_single","radial")
+acc_bold_fc = svm_cv_accuracy(data_BOLD_FC_invest,5,100,"radial")
 print(acc_bold_fc)
 ```
 
 ### INS and BINS
 ```{r svm_invest_INS&BINS}
-acc_ins_bins = svm_cv_accuracy(data_INS_BINS_invest,5,100,"acc_single","radial")
+acc_ins_bins = svm_cv_accuracy(data_INS_BINS_invest,5,100,"radial")
 print(acc_ins_bins)
 ```
 
 ### minus WNS
 ```{r svm_invest_minus_WNS}
-acc_minus_wns = svm_cv_accuracy(data_minus_WNS_invest,5,100,"acc_single","radial")
+acc_minus_wns = svm_cv_accuracy(data_minus_WNS_invest,5,100,"radial")
 print(acc_minus_wns)
 ```
 
 ### minus BNS
 ```{r svm_invest_minus_BNS}
-acc_minus_bns = svm_cv_accuracy(data_minus_BNS_invest,5,100,"acc_single","radial")
+acc_minus_bns = svm_cv_accuracy(data_minus_BNS_invest,5,100,"radial")
 print(acc_minus_bns)
 ```
 
 ### minus BOLD
 ```{r svm_invest_minus_BOLD}
-acc_minus_bold = svm_cv_accuracy(data_minus_BOLD_invest,5,100,"acc_single","radial")
+acc_minus_bold = svm_cv_accuracy(data_minus_BOLD_invest,5,100,"radial")
 print(acc_minus_bold)
 ```
 
 ### minus FC
 ```{r svm_invest_minus_FC}
-acc_minus_fc = svm_cv_accuracy(data_minus_FC_invest,5,100,"acc_single","radial")
+acc_minus_fc = svm_cv_accuracy(data_minus_FC_invest,5,100,"radial")
 print(acc_minus_fc)
 ```
 
 ### INS
 ```{r svm_invest_INS}
-acc_wns = svm_cv_accuracy(data_WNS_invest,5,100,"acc_single","radial")
+acc_wns = svm_cv_accuracy(data_WNS_invest,5,100,"radial")
 print(acc_wns)
 ```
 
 ### BNS
 ```{r svm_invest_BNS}
-acc_bns = svm_cv_accuracy(data_BNS_invest,5,100,"acc_single","radial")
+acc_bns = svm_cv_accuracy(data_BNS_invest,5,100,"radial")
 print(acc_bns)
 ```
 
 ### BOLD
 ```{r svm_invest_BOLD}
-acc_bold = svm_cv_accuracy(data_BOLD_invest,5,100,"acc_single","radial")
+acc_bold = svm_cv_accuracy(data_BOLD_invest,5,100,"radial")
 print(acc_bold)
 ```
 
 ### FC
 ```{r svm_invest_FC}
-acc_fc = svm_cv_accuracy(data_FC_invest,5,100,"acc_single","radial")
+acc_fc = svm_cv_accuracy(data_FC_invest,5,100,"radial")
 print(acc_fc)
 ```

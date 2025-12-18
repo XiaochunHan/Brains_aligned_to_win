@@ -28,9 +28,9 @@ BOLD_mean = extract_win_or_pay_mean(dataset_BOLD,dataset_y_attack,"BOLD_","win",
 FC_mean = extract_win_or_pay_mean(dataset_FC,dataset_y_attack,"FC_","win",FALSE)
 INS_mean = extract_win_or_pay_mean(dataset_INS,dataset_y_attack,"WNS_","win",FALSE)
 BINS_mean = extract_win_or_pay_mean(dataset_BINS,dataset_y_attack,"BNS_","win",FALSE)
-data_all_invest = cbind(INS_mean[,c(1,4:ncol(INS_mean))],BINS_mean[,4:ncol(BINS_mean)],BOLD_mean[,4:ncol(BOLD_mean)],FC_mean[,4:ncol(FC_mean)])
-data_INS_BINS_invest = cbind(INS_mean[,c(1,4:ncol(INS_mean))],BINS_mean[,4:ncol(BINS_mean)])
-data_BOLD_FC_invest = cbind(BOLD_mean[,c(1,4:ncol(BOLD_mean))],FC_mean[,4:ncol(FC_mean)])
+data_all_invest = cbind(INS_mean[,c(1,3:ncol(INS_mean))],BINS_mean[,3:ncol(BINS_mean)],BOLD_mean[,3:ncol(BOLD_mean)],FC_mean[,3:ncol(FC_mean)])
+data_INS_BINS_invest = cbind(INS_mean[,c(1,3:ncol(INS_mean))],BINS_mean[,3:ncol(BINS_mean)])
+data_BOLD_FC_invest = cbind(BOLD_mean[,c(1,3:ncol(BOLD_mean))],FC_mean[,3:ncol(FC_mean)])
 ```
 
 ## Predicting win vs. lose

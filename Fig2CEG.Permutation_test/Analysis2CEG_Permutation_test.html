@@ -373,22 +373,22 @@ BOLD_mean = extract_win_or_pay_mean(dataset_BOLD,dataset_y_attack,&quot;BOLD_&qu
 FC_mean = extract_win_or_pay_mean(dataset_FC,dataset_y_attack,&quot;FC_&quot;,&quot;win&quot;,FALSE)
 INS_mean = extract_win_or_pay_mean(dataset_INS,dataset_y_attack,&quot;WNS_&quot;,&quot;win&quot;,FALSE)
 BINS_mean = extract_win_or_pay_mean(dataset_BINS,dataset_y_attack,&quot;BNS_&quot;,&quot;win&quot;,FALSE)
-data_all_invest = cbind(BOLD_mean[,c(1,4:ncol(BOLD_mean))],FC_mean[,4:ncol(FC_mean)],INS_mean[,4:ncol(INS_mean)],BINS_mean[,4:ncol(BINS_mean)])
+data_all_invest = cbind(BOLD_mean[,c(1,3:ncol(BOLD_mean))],FC_mean[,3:ncol(FC_mean)],INS_mean[,3:ncol(INS_mean)],BINS_mean[,3:ncol(BINS_mean)])
 data_all_invest_rev = data_all_invest[rev(rownames(data_all_invest)),]
 data_all_invest_both = as.matrix(data_all_invest_rev[,2:ncol(data_all_invest_rev)])
 
-data_INS_BINS_invest = cbind(INS_mean[,c(1,4:ncol(INS_mean))],BINS_mean[,4:ncol(BINS_mean)])
-data_BOLD_FC_invest = cbind(BOLD_mean[,c(1,4:ncol(BOLD_mean))],FC_mean[,4:ncol(FC_mean)])
+data_INS_BINS_invest = cbind(INS_mean[,c(1,3:ncol(INS_mean))],BINS_mean[,3:ncol(BINS_mean)])
+data_BOLD_FC_invest = cbind(BOLD_mean[,c(1,3:ncol(BOLD_mean))],FC_mean[,3:ncol(FC_mean)])
 
-data_WNS_invest = INS_mean[,c(1,4:ncol(INS_mean))]
-data_BNS_invest = BINS_mean[,c(1,4:ncol(BINS_mean))]
-data_BOLD_invest = BOLD_mean[,c(1,4:ncol(BOLD_mean))]
-data_FC_invest = FC_mean[,c(1,4:ncol(FC_mean))]
+data_WNS_invest = INS_mean[,c(1,3:ncol(INS_mean))]
+data_BNS_invest = BINS_mean[,c(1,3:ncol(BINS_mean))]
+data_BOLD_invest = BOLD_mean[,c(1,3:ncol(BOLD_mean))]
+data_FC_invest = FC_mean[,c(1,3:ncol(FC_mean))]
 
-data_minus_WNS_invest = cbind(BINS_mean[,c(1,4:ncol(BINS_mean))],BOLD_mean[,4:ncol(BOLD_mean)],FC_mean[,4:ncol(FC_mean)])
-data_minus_BNS_invest = cbind(INS_mean[,c(1,4:ncol(INS_mean))],BOLD_mean[,4:ncol(BOLD_mean)],FC_mean[,4:ncol(FC_mean)])
-data_minus_BOLD_invest = cbind(INS_mean[,c(1,4:ncol(INS_mean))],BINS_mean[,4:ncol(BINS_mean)],FC_mean[,4:ncol(FC_mean)])
-data_minus_FC_invest = cbind(INS_mean[,c(1,4:ncol(INS_mean))],BINS_mean[,4:ncol(BINS_mean)],BOLD_mean[,4:ncol(BOLD_mean)])</code></pre>
+data_minus_WNS_invest = cbind(BINS_mean[,c(1,3:ncol(BINS_mean))],BOLD_mean[,3:ncol(BOLD_mean)],FC_mean[,3:ncol(FC_mean)])
+data_minus_BNS_invest = cbind(INS_mean[,c(1,3:ncol(INS_mean))],BOLD_mean[,3:ncol(BOLD_mean)],FC_mean[,3:ncol(FC_mean)])
+data_minus_BOLD_invest = cbind(INS_mean[,c(1,3:ncol(INS_mean))],BINS_mean[,3:ncol(BINS_mean)],FC_mean[,3:ncol(FC_mean)])
+data_minus_FC_invest = cbind(INS_mean[,c(1,3:ncol(INS_mean))],BINS_mean[,3:ncol(BINS_mean)],BOLD_mean[,3:ncol(BOLD_mean)])</code></pre>
 </div>
 <div id="permutation-test" class="section level2">
 <h2>Permutation Test</h2>
