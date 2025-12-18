@@ -1,0 +1,73 @@
+---
+title: "Analysis5AB_Generalization"
+author: "Xiaochun Han"
+date: "2025-12-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+source("../utils/functions_library.R")
+load_packages(c("dplyr", "caret", "e1071","ggplot2", "pROC", "reshape2", "rstatix","pROC"))
+```
+
+## Import data
+### Develop data
+```{r import dev_data}
+setwd('../Data/Develop')
+wd<-getwd()
+dataset_BINS <- read.csv('BINS_single_trial_invest.csv',header=TRUE,sep=",")
+dataset_INS <- read.csv('INS_single_trial_invest.csv',header=TRUE,sep=",")
+dataset_y <- read.csv('win_lose_and_pay_single_trial.csv',header=TRUE,sep=",")
+dataset_y_attack <- dataset_y[dataset_y$role.A.1. == 1,]
+dataset_y_attack <- dataset_y_attack[-c(4,14,22),] # Three sessions are deleted due to the absent of winning trial(4,22) and brain signal(14). 
+
+INS_mean = extract_win_or_pay_mean(dataset_INS,dataset_y_attack,"WNS_","win",FALSE)
+BINS_mean = extract_win_or_pay_mean(dataset_BINS,dataset_y_attack,"BNS_","win",FALSE)
+data1_INS_BINS_invest = cbind(INS_mean[,c(1,4:ncol(INS_mean))],BINS_mean[,4:ncol(BINS_mean)])
+```
+
+### Generalize data
+```{r import gen_data}
+rm(dataset_BINS, dataset_INS, dataset_y, dataset_y_attack, INS_mean, BINS_mean)
+setwd('../Data/General')
+wd<-getwd()
+dataset_BINS <- read.csv('BINS_single_trial.csv',header=TRUE,sep=",")
+dataset_INS <- read.csv('INS_single_trial.csv',header=TRUE,sep=",")
+dataset_y <- read.csv('win_lose_and_pay_single_trial.csv',header=TRUE,sep=",")
+dataset_y_attack <- dataset_y[dataset_y$role.A.1. == 1,]
+
+INS_mean = extract_win_or_pay_mean(dataset_INS,dataset_y_attack,"WNS_","win",FALSE)
+BINS_mean = extract_win_or_pay_mean(dataset_BINS,dataset_y_attack,"BNS_","win",FALSE)
+data2_INS_BINS_invest = cbind(INS_mean[,c(1,4:ncol(INS_mean))],BINS_mean[,4:ncol(BINS_mean)])
+```
+
+## Predicting win vs. lose
+### Accuracy
+```{r svm_acc}
+acc_wns_bns = svm_general_accuracy(data1_INS_BINS_invest,data2_INS_BINS_invest)
+print(acc_wns_bns)
+```
+### AUC
+```{r svm_auc}
+auc_wns_bns = svm_general_auc(data1_INS_BINS_invest,data2_INS_BINS_invest,cond_col = "#FF7E79")
+```
+
+### Permutation
+```{r svm_perm,eval=FALSE}
+acc_gen_perm = svm_general_accuracy_perm(data1_INS_BINS_invest,data2_INS_BINS_invest,5000)
+```
+#### figure
+```{r svm_perm_figure}
+acc_gen_perm = readRDS("svm_gen_perm_INS_BINS_win_5000.RData")
+acc_low_25 = sort(acc_gen_perm$acc_perm)[125]
+acc_top_25 = sort(acc_gen_perm$acc_perm)[4875]
+acc_gen_perm$ci95 = rep(0,5000)
+acc_gen_perm$ci95[(acc_gen_perm$acc_perm<acc_low_25|acc_gen_perm$acc_perm>acc_top_25)] = 1
+
+ggplot(acc_gen_perm, aes(x = acc_perm, fill = as.factor(ci95))) +
+    geom_histogram(colour = "#4C4C4C", bins = 33) + 
+    scale_fill_manual(values = c("white","#FF7E79"))+
+    geom_vline(aes(xintercept = acc_wns_bns), color = "#FF7E79", linewidth = 2) + theme_classic()+xlim(0,1) + 
+    labs(x = "Win-Lose Prediction Accuracy") + theme(text = element_text(size = 15),legend.position="none",axis.ticks.length=unit(-0.1, "cm"))

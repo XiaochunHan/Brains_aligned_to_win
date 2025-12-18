@@ -185,7 +185,7 @@ svm_feat_impor <- function(df,feat,nfold,nCV,nPerm){
 
 #===============================================================================
 ## Function7: svm_general_accuracy
-svm_general_accuracy <- function(df1,df2,acc_or_auc){
+svm_general_accuracy <- function(df1,df2){
   df1$good_1 = factor(df1$good_1, levels = c(0, 1))
   df2$good_1 = factor(df2$good_1, levels = c(0, 1))
   training_fold = df1 
@@ -197,18 +197,9 @@ svm_general_accuracy <- function(df1,df2,acc_or_auc){
                    type = 'C-classification',
                    kernel = 'radial')
   y_pred = predict(classifier, newdata = test_fold[-1])
-  #browser()
-  if (acc_or_auc == "acc"){
-    cm = table(test_fold[, 1], y_pred)
-    accuracy = (cm[1,1] + cm[2,2]) / (cm[1,1] + cm[2,2] + cm[1,2] + cm[2,1])
-    return(accuracy)
-  }else{
-    auc_data = data.frame(matrix(nrow = length(y_pred), ncol = 0));
-    y_pred = factor(y_pred, ordered=TRUE)
-    auc_data$y_real = test_fold[, 1]
-    auc_data$y_fit = y_pred
-    return(auc_data)
-  }
+  cm = table(test_fold[, 1], y_pred)
+  accuracy = (cm[1,1] + cm[2,2]) / (cm[1,1] + cm[2,2] + cm[1,2] + cm[2,1])
+  return(accuracy)
 }
 
 #===============================================================================
@@ -220,7 +211,7 @@ svm_general_accuracy_perm <- function(df1,df2,n_iter){
                        width = 50,   # Progress bar width. Defaults to getOption("width")
                        char = "=")   # Character used to create the bar
   
-  permMean = data.frame();
+  permAcc = data.frame();
   for (p in 1:n_iter){
     setTxtProgressBar(pb, p)
     df_rand = df2
@@ -238,9 +229,10 @@ svm_general_accuracy_perm <- function(df1,df2,n_iter){
     y_pred = predict(classifier, newdata = test_fold[-1])
     cm = table(test_fold[, 1], y_pred)
     accuracy = (cm[1,1] + cm[2,2]) / (cm[1,1] + cm[2,2] + cm[1,2] + cm[2,1])
-    permMean = rbind(permMean,accuracy)
+    permAcc = rbind(permAcc,accuracy)
   }
-  return(permMean)
+  colnames(permAcc) = "acc_perm"
+  return(permAcc)
 }
 
 #===============================================================================
@@ -1763,5 +1755,112 @@ perform_tuning_anova <- function(anova_data) {
     levene_test = levene_test,
     shapiro_test = shapiro_test,
     eta_squared = eta_results
+  ))
+}
+
+#===============================================================================
+## Function40: svm_general_auc
+svm_general_auc <- function(train_df, test_df, nBoot = 1000, plotROC = TRUE, cond_col = "blue") {
+  
+  # 确保标签为因子且水平一致[1,4](@ref)
+  train_df[,1] <- factor(train_df[,1], levels = c(0, 1))
+  test_df[,1] <- factor(test_df[,1], levels = c(0, 1))
+  
+  # 移除缺失值[1](@ref)
+  train_df <- na.omit(train_df)
+  test_df <- na.omit(test_df)
+  
+  # 数据标准化：使用训练集参数标准化测试集[2,8](@ref)
+  train_scaled <- train_df
+  test_scaled <- test_df
+  
+  # 标准化训练集
+  train_scaled[-1] <- scale(train_df[-1])
+  
+  # 使用训练集的均值和标准差标准化测试集[2](@ref)
+  if(ncol(train_df) > 1 && nrow(train_df) > 0) {
+    train_means <- apply(train_df[-1], 2, mean, na.rm = TRUE)
+    train_sds <- apply(train_df[-1], 2, sd, na.rm = TRUE)
+    
+    # 避免除零错误
+    zero_sd <- which(train_sds == 0)
+    if(length(zero_sd) > 0) {
+      train_sds[zero_sd] <- 1  # 对于标准差为0的变量，设置为1避免除零
+    }
+    
+    test_scaled[-1] <- scale(test_df[-1], center = train_means, scale = train_sds)
+  }
+  
+  # 训练SVM模型[8](@ref)
+  classifier <- svm(
+    good_1 ~ .,
+    data = train_scaled,
+    type = "C-classification",
+    kernel = "radial",
+    probability = TRUE
+  )
+  
+  # 在测试集上进行预测[1,4](@ref)
+  y_pred <- predict(classifier, test_scaled[-1], probability = TRUE)
+  prob_mat <- attr(y_pred, "probabilities")
+  y_score <- prob_mat[, "1"]
+  y_true <- test_scaled[, 1]
+  
+  # 计算AUC[1,4](@ref)
+  roc_obj <- roc(y_true, y_score, quiet = TRUE)
+  mean_auc <- as.numeric(auc(roc_obj))
+  
+  # Bootstrap计算置信区间[1](@ref)
+  auc_boot <- numeric(nBoot)
+  N <- length(y_true)
+  
+  for (b in 1:nBoot) {
+    idx <- sample(seq_len(N), size = N, replace = TRUE)
+    y_b <- y_true[idx]
+    s_b <- y_score[idx]
+    
+    if (length(unique(y_b)) < 2) {
+      auc_boot[b] <- NA
+    } else {
+      auc_boot[b] <- as.numeric(auc(roc(y_b, s_b, quiet = TRUE)))
+    }
+  }
+  
+  auc_boot <- auc_boot[!is.na(auc_boot)]
+  CI95 <- quantile(auc_boot, c(0.025, 0.975))
+  
+  # 绘制ROC曲线[4,6](@ref)
+  if (plotROC) {
+    roc_smooth <- smooth(roc_obj, method = "binormal")
+    roc_df <- data.frame(
+      FPR = 1 - roc_smooth$specificities,
+      TPR = roc_smooth$sensitivities
+    )
+    
+    p <- ggplot(roc_df, aes(x = FPR, y = TPR)) +
+      geom_line(color = cond_col, linewidth = 1.2) +
+      geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray") +
+      coord_equal() +
+      theme_classic(base_size = 14) +
+      labs(
+        title = "ROC Curve (Independent Test Set)",
+        x = "False Positive Rate",
+        y = "True Positive Rate",
+        subtitle = sprintf(
+          "AUC = %.3f, 95%% CI [%.3f, %.3f]",
+          mean_auc, CI95[1], CI95[2]
+        )
+      )
+    print(p)
+  }
+  
+  # 返回结果[1](@ref)
+  return(list(
+    mean_auc = mean_auc,
+    CI95 = CI95,
+    auc_boot = auc_boot,
+    y_true = y_true,
+    y_score = y_score,
+    roc_object = roc_obj
   ))
 }
