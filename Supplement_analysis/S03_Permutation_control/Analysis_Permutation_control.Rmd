@@ -1,0 +1,53 @@
+---
+title: "Analysis_Permutation_control"
+author: "Xiaochun Han"
+date: "2025-12-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+source("../../utils/functions_library.R")
+load_packages(c("dplyr", "caret", "e1071","ggplot2", "pROC", "reshape2", "rstatix","pROC"))
+```
+
+## Import data
+```{r impart data}
+dataset_pseudo <- read.csv('Pseudo_pair_control.csv',header=TRUE,sep=",")
+dataset_circular <- read.csv('Circular_time_control.csv',header=TRUE,sep=",")
+```
+
+### Pseudo_pair_control
+```{r permute_pseudo}
+acc_low_25 = sort(dataset_pseudo$Var1)[25]
+acc_top_25 = sort(dataset_pseudo$Var1)[975]
+dataset_pseudo$ci95 = rep(0,1000)
+dataset_pseudo$ci95[(dataset_pseudo$Var1<acc_low_25|dataset_pseudo$Var1>acc_top_25)] = 1
+acc_all = 0.9212
+p_perm = mean(acc_all<dataset_pseudo$Var1)
+
+p<-ggplot(dataset_pseudo, aes(x = Var1, fill = as.factor(ci95))) +
+    geom_histogram(colour = "#4C4C4C", bins = 61) + 
+    scale_fill_manual(values = c("white","#B095C6"))+
+    geom_vline(aes(xintercept = acc_all), color = "#B095C6", linewidth = 2) + theme_classic()+xlim(0.5,1) + 
+    labs(x = "Win-Lose Prediction Accuracy") + theme(text = element_text(size = 15),legend.position="none",axis.ticks.length=unit(-0.1, "cm"))
+print(p)
+```
+
+### Circular_time_control
+```{r permute_circular}
+acc_low_25 = sort(dataset_circular$Var1)[25]
+acc_top_25 = sort(dataset_circular$Var1)[975]
+dataset_circular$ci95 = rep(0,1000)
+dataset_circular$ci95[(dataset_circular$Var1<acc_low_25|dataset_circular$Var1>acc_top_25)] = 1
+acc_all = 0.9212
+p_perm = mean(acc_all<dataset_circular$Var1)
+
+p<-ggplot(dataset_circular, aes(x = Var1, fill = as.factor(ci95))) +
+    geom_histogram(colour = "#4C4C4C", bins = 61) + 
+    scale_fill_manual(values = c("white","#B095C6"))+
+    geom_vline(aes(xintercept = acc_all), color = "#B095C6", linewidth = 2) + theme_classic()+xlim(0.7,1) + 
+    labs(x = "Win-Lose Prediction Accuracy") + theme(text = element_text(size = 15),legend.position="none",axis.ticks.length=unit(-0.1, "cm"))
+print(p)
+```
