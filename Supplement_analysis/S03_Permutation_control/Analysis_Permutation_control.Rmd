@@ -65,29 +65,7 @@ p_perm = mean(acc_all<dataset_machine$Var1)
 p<-ggplot(dataset_machine, aes(x = Var1, fill = as.factor(ci95))) +
     geom_histogram(colour = "#4C4C4C", bins = 61) + 
     scale_fill_manual(values = c("white","#B095C6"))+
-    geom_vline(aes(xintercept = acc_all), color = "#B095C6", linewidth = 2) + theme_classic()+xlim(0.7,1) + 
+    geom_vline(aes(xintercept = acc_all), color = "#B095C6", linewidth = 2) + theme_classic()+xlim(0.5,1) + 
     labs(x = "Win-Lose Prediction Accuracy") + theme(text = element_text(size = 25),legend.position="none",axis.ticks.length=unit(-0.1, "cm"))
 print(p)
-```
-
-```{r permute_machine}
-library(stringr)
-
-# 从 dataset_machine$sub_folder 中提取数字
-# 使用正则表达式匹配"permute"后面的数字序列
-extracted_numbers <- as.numeric(str_extract(dataset_machine$sub_folder, "(?<=permute)\\d+"))
-
-# 检查是否成功提取了999个数字（因为您提到有999行）
-print(paste("成功提取的数字个数:", length(extracted_numbers)))
-
-# 找出1到1000范围内缺失的数字
-all_numbers <- 1:1000
-missing_numbers <- setdiff(all_numbers, extracted_numbers)
-
-# 输出结果
-if (length(missing_numbers) == 0) {
-  print("所有1到1000的数字都存在。")
-} else {
-  print(paste("缺失的数字是:", paste(missing_numbers, collapse = ", ")))
-}
 ```
