@@ -7,6 +7,7 @@ load_packages <- function(pkgs) {
     }
   }
 }
+
 #===============================================================================
 ## Function1: extract_win_or_pay_mean
 extract_win_or_pay_mean <- function(df_feature,df_y,feature,win_or_pay,show_pay_trialN){
@@ -58,7 +59,78 @@ extract_win_or_pay_mean <- function(df_feature,df_y,feature,win_or_pay,show_pay_
 }
 
 #===============================================================================
-## Function2: reorg_df
+## Function2: extract_match_win_lose_mean
+extract_match_win_lose_mean <- function(df_feature,df_win,feature,match_style){
+  
+  df_feature$Awin = rep(NaN, nrow(df_feature))
+  df_feature$Alose = rep(NaN, nrow(df_feature))
+  df_feature_Trial = df_feature[,grepl('R', colnames(df_feature))]
+  df_win_Trial = df_win[,grepl('_wl', colnames(df_win))]
+  
+  for (n in c(1:nrow(df_win))){
+    IndexWin = df_win_Trial[n,] == 1
+    IndexLose = df_win_Trial[n,] == 0
+    Nwin = sum(IndexWin)
+    Nlose = sum(IndexLose)
+    TrialWin = data.frame()
+    TrialLose = data.frame()
+    TrialWin = df_feature_Trial[df_win$n[n] == df_feature$n, IndexWin]
+    TrialLose = df_feature_Trial[df_win$n[n] == df_feature$n, IndexLose]
+    
+    if (Nwin > Nlose){
+      
+      if (match_style == "decrease"){
+        Rwin = sample(1:Nwin)
+        df_feature$Awin[df_win$n[n] == df_feature$n] = rowMeans(TrialWin[,Rwin[1:Nlose]])
+        df_feature$Alose[df_win$n[n] == df_feature$n] = rowMeans(TrialLose)
+      }else if (match_style == "increase"){
+        Rlose = sample(1:Nlose, Nwin-Nlose, replace = TRUE)
+        df_feature$Alose[df_win$n[n] == df_feature$n] = rowMeans(cbind(TrialLose,TrialLose[,Rlose]))
+        df_feature$Awin[df_win$n[n] == df_feature$n] = rowMeans(TrialWin)
+      }else{
+        Rlose = sample(1:Nlose, match_style, replace = TRUE)
+        Rwin = sample(1:Nwin, match_style, replace = TRUE)
+        #browser()
+        #cat(sprintf('n = %d, Rlose = %d, Rwin = %d.\n', df_win$n[n], Rlose, Rwin))
+        if (match_style == 1){
+          df_feature$Awin[df_win$n[n] == df_feature$n] = TrialWin[,Rwin]
+          df_feature$Alose[df_win$n[n] == df_feature$n] = TrialLose[,Rlose]
+        }else{
+          df_feature$Awin[df_win$n[n] == df_feature$n] = rowMeans(TrialWin[,Rwin])
+          df_feature$Alose[df_win$n[n] == df_feature$n] = rowMeans(TrialLose[,Rlose])
+        }
+      }
+      
+    }else{
+      if (match_style == "decrease"){
+        Rlose = sample(1:Nlose)
+        df_feature$Alose[df_win$n[n] == df_feature$n] = rowMeans(TrialLose[,Rlose[1:Nwin]])
+        df_feature$Awin[df_win$n[n] == df_feature$n] = rowMeans(TrialWin)
+      }else if (match_style == "increase"){
+        Rwin = sample(1:Nwin, Nlose-Nwin, replace = TRUE)
+        df_feature$Awin[df_win$n[n] == df_feature$n] = rowMeans(cbind(TrialWin,TrialWin[,Rwin]))
+        df_feature$Alose[df_win$n[n] == df_feature$n] = rowMeans(TrialLose)
+      }else{
+        Rlose = sample(1:Nlose, match_style, replace = TRUE)
+        Rwin = sample(1:Nwin, match_style, replace = TRUE)
+        #browser()
+        #cat(sprintf('n = %d, Rlose = %d, Rwin = %d.\n', df_win$n[n], Rlose, Rwin))
+        if (match_style == 1){
+          df_feature$Awin[df_win$n[n] == df_feature$n] = TrialWin[,Rwin]
+          df_feature$Alose[df_win$n[n] == df_feature$n] = TrialLose[,Rlose]
+        }else{
+          df_feature$Awin[df_win$n[n] == df_feature$n] = rowMeans(TrialWin[,Rwin])
+          df_feature$Alose[df_win$n[n] == df_feature$n] = rowMeans(TrialLose[,Rlose])
+        }
+      }
+    }
+  }
+  df_need_dcast = reorg_df(df_feature,feature)
+  return(df_need_dcast)
+}
+
+#===============================================================================
+## Function3: reorg_df
 reorg_df <- function(df_feature,feature){
   df_feature = na.omit(df_feature)
   df_feature_var = df_feature[,!grepl('R|Agood|Abad', colnames(df_feature))]
@@ -119,7 +191,7 @@ reorg_df <- function(df_feature,feature){
   return(df_need_dcast)
 }
 #===============================================================================
-## Function3: svm_cv_accuracy
+## Function4: svm_cv_accuracy
 svm_cv_accuracy <- function(df,nfold,n_iter,koi){
   df[,1] = factor(df[,1], levels = c(0, 1))
   df = na.omit(df)
@@ -150,7 +222,7 @@ svm_cv_accuracy <- function(df,nfold,n_iter,koi){
 }
 
 #===============================================================================
-## Function4: svm_createFolds
+## Function5: svm_createFolds
 svm_createFolds <- function(df,nfold){
   df[,1] = as.factor(df[,1])
   df_y<-df[df[,1] == 1,]
@@ -164,7 +236,7 @@ svm_createFolds <- function(df,nfold){
 }
 
 #===============================================================================
-## Function5: ind_scale
+## Function6: ind_scale
 ind_scale <- function(df1,df2){
   df1_mean = sapply(df1, mean)
   df1_sd = sapply(df1, sd)
@@ -176,7 +248,7 @@ ind_scale <- function(df1,df2){
 }
 
 #===============================================================================
-## Function6: svm_perm
+## Function7: svm_perm
 svm_perm <- function(df,nfold,n_iter,koi){
   pb <- txtProgressBar(min = 0,      # Minimum value of the progress bar
                        max = n_iter, # Maximum value of the progress bar
@@ -210,7 +282,7 @@ svm_perm <- function(df,nfold,n_iter,koi){
 }
 
 #===============================================================================
-## Function7: svm_feat_impor
+## Function8: svm_feat_impor
 svm_feat_impor <- function(df,feat,nfold,nCV,nPerm){
   pb <- txtProgressBar(min = 0,      # Minimum value of the progress bar
                        max = nPerm, # Maximum value of the progress bar
@@ -245,7 +317,7 @@ svm_feat_impor <- function(df,feat,nfold,nCV,nPerm){
 }
 
 #===============================================================================
-## Function8: svm_general_accuracy
+## Function9: svm_general_accuracy
 svm_general_accuracy <- function(df1,df2){
   df1$good_1 = factor(df1$good_1, levels = c(0, 1))
   df2$good_1 = factor(df2$good_1, levels = c(0, 1))
@@ -275,7 +347,7 @@ svm_general_accuracy <- function(df1,df2){
 }
 
 #===============================================================================
-## Function9: acc_95CI
+## Function10: acc_95CI
 acc_95CI <- function(y_true_all, y_score_all, nBoot) {
   acc_boot <- numeric(nBoot)
   N <- length(y_true_all)
@@ -294,7 +366,7 @@ acc_95CI <- function(y_true_all, y_score_all, nBoot) {
   return(CI95)
 }
 #===============================================================================
-## Function10: svm_general_accuracy_perm
+## Function11: svm_general_accuracy_perm
 svm_general_accuracy_perm <- function(df1,df2,n_iter){
   pb <- txtProgressBar(min = 0,      # Minimum value of the progress bar
                        max = n_iter, # Maximum value of the progress bar
@@ -327,7 +399,7 @@ svm_general_accuracy_perm <- function(df1,df2,n_iter){
 }
 
 #===============================================================================
-## Function11: track_regress
+## Function12: track_regress
 track_regress <- function(df_invest){
   df_invest_Trial = df_invest[,grepl('_inv', colnames(df_invest))]
   df_invest_Manip = df_invest[,!grepl('_inv', colnames(df_invest))]
@@ -378,7 +450,7 @@ track_regress <- function(df_invest){
 }
 
 #===============================================================================
-## Function12: svm_lime
+## Function13: svm_lime
 svm_lime <- function(df,n_b,target_label,n_feat,select_method){
   df$good_1[df$good_1 == 1] <- 'yes'
   df$good_1[df$good_1 == 0] <- 'no'
@@ -392,7 +464,7 @@ svm_lime <- function(df,n_b,target_label,n_feat,select_method){
 }
 
 #===============================================================================
-## Function13: lm_cv_correlation
+## Function14: lm_cv_correlation
 lm_cv_correlation <- function(df,nfold,n_iter,out_mat){
   df = na.omit(df)
   colnames(df)[1] = "y_value"
@@ -424,7 +496,7 @@ lm_cv_correlation <- function(df,nfold,n_iter,out_mat){
 }
 
 #===============================================================================
-## Function14: lm_perm
+## Function15: lm_perm
 lm_perm <- function(df,nfold,n_iter,out_mat){
   pb <- txtProgressBar(min = 0,      # Minimum value of the progress bar
                        max = n_iter, # Maximum value of the progress bar
@@ -462,7 +534,7 @@ lm_perm <- function(df,nfold,n_iter,out_mat){
 }
 
 #===============================================================================
-## Function15: nested_cv_classifier
+## Function16: nested_cv_classifier
 nested_cv_classifier <- function(df, nfold, n_iter, classifier_type, permute_or_not, n_bootstrap = 1000, ci_level = 0.95) {
   
   pb <- txtProgressBar(min = 0, max = n_iter, style = 3, width = 50, char = "=")
@@ -731,7 +803,7 @@ nested_cv_classifier <- function(df, nfold, n_iter, classifier_type, permute_or_
 }
 
 #===============================================================================
-## Function16: tune_svm
+## Function17: tune_svm
 tune_svm <- function(training_data, params, nfold) {
   tune_grid = expand.grid(C = params$C_range, gamma = params$gamma_range)
   best_accuracy = 0
@@ -775,7 +847,7 @@ tune_svm <- function(training_data, params, nfold) {
 }
 
 #===============================================================================
-## Function17: tune_glmnet
+## Function18: tune_glmnet
 tune_glmnet <- function(X_train, y_train, C_range, nfold, alpha) {
   best_accuracy = 0
   best_C = 1
@@ -821,7 +893,7 @@ tune_glmnet <- function(X_train, y_train, C_range, nfold, alpha) {
 }
 
 #===============================================================================
-## Function18: tune_liblinear
+## Function19: tune_liblinear
 tune_liblinear <- function(X_train, y_train, C_range, nfold, type) {
   best_accuracy = 0
   best_C = 1
@@ -864,7 +936,7 @@ tune_liblinear <- function(X_train, y_train, C_range, nfold, type) {
 }
 
 #===============================================================================
-## Function19: tune_sensitive
+## Function20: tune_sensitive
 tune_sensitive <- function(df, params, nfold) {
   tune_grid = expand.grid(C = params$C_range, gamma = params$gamma_range)
 
@@ -935,7 +1007,7 @@ tune_sensitive <- function(df, params, nfold) {
 }
 
 #===============================================================================
-## Function20: draw_accuracy_heatmap
+## Function21: draw_accuracy_heatmap
 draw_accuracy_heatmap <- function(accuracy_matrix, c_range, gamma_range, figname) {
 
   accuracy_df <- as.data.frame(accuracy_matrix)
@@ -965,7 +1037,7 @@ draw_accuracy_heatmap <- function(accuracy_matrix, c_range, gamma_range, figname
 }
 
 #===============================================================================
-## Function21: auc_boot_cv
+## Function22: auc_boot_cv
 auc_boot_cv <- function(df,nfold,koi,nBoot,plotROC,cond_col,filename){
   
   df[,1] = factor(df[,1], levels = c(0, 1)) 
@@ -1061,7 +1133,7 @@ auc_boot_cv <- function(df,nfold,koi,nBoot,plotROC,cond_col,filename){
 }
 
 #===============================================================================
-## Function22: compare_models_delong
+## Function23: compare_models_delong
 compare_models_delong <- function(y_true, score_list) {
   
   y_true <- factor(y_true, levels = c(0, 1))
@@ -1109,7 +1181,7 @@ compare_models_delong <- function(y_true, score_list) {
 }
 
 #===============================================================================
-## Function23: compare_models_mcnemar
+## Function24: compare_models_mcnemar
 compare_models_mcnemar <- function(df1, df2, df3, nfold = 5) {
 
   run_cv <- function(df, folds) {
@@ -1192,7 +1264,7 @@ compare_models_mcnemar <- function(df1, df2, df3, nfold = 5) {
 }
 
 #===============================================================================
-## Function24: prepare_anova_data
+## Function25: prepare_anova_data
 prepare_anova_data <- function(result) {
   fold_details <- result$fold_accuracy_details
   
@@ -1225,7 +1297,7 @@ prepare_anova_data <- function(result) {
 }
 
 #===============================================================================
-## Function25: perform_tuning_anova
+## Function26: perform_tuning_anova
 perform_tuning_anova <- function(anova_data) {
   anova_model <- aov(accuracy ~ C_factor * gamma_factor, data = anova_data)
   
@@ -1266,7 +1338,7 @@ perform_tuning_anova <- function(anova_data) {
 }
 
 #===============================================================================
-## Function26: svm_general_auc
+## Function27: svm_general_auc
 svm_general_auc <- function(train_df, test_df, nBoot = 1000, plotROC = TRUE, cond_col = "blue",filename = 'general_roc_plot.png') {
   
   train_df[,1] <- factor(train_df[,1], levels = c(0, 1))
