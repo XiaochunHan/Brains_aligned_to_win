@@ -36,17 +36,17 @@ data_BOLD_FC_invest = cbind(BOLD_mean[,c(1,3:ncol(BOLD_mean))],FC_mean[,3:ncol(F
 ## Predicting win vs. lose
 ### All features
 ```{r svm_invest_all}
-auc_all = auc_boot_cv(data_all_invest,5,"radial",1000,TRUE,'#000000')
+auc_all = auc_boot_cv(data_all_invest,5,"radial",1000,TRUE,'#000000','data_all_invest_roc_plot.png')
 ```
 
 ### BOLD and FC
 ```{r svm_invest_BOLD&FC}
-auc_bold_fc = auc_boot_cv(data_BOLD_FC_invest,5,"radial",1000,TRUE,'#ACACAC')
+auc_bold_fc = auc_boot_cv(data_BOLD_FC_invest,5,"radial",1000,TRUE,'#ACACAC','data_BOLD_FC_invest_roc_plot.png')
 ```
 
 ### INS and BINS
 ```{r svm_invest_INS&BINS}
-auc_ins_bins = auc_boot_cv(data_INS_BINS_invest,5,"radial",1000,TRUE,'#AD91C4')
+auc_ins_bins = auc_boot_cv(data_INS_BINS_invest,5,"radial",1000,TRUE,'#AD91C4','data_INS_BINS_invest_roc_plot.png')
 ```
 
 ## Compare model performance

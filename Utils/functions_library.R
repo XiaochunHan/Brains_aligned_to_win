@@ -966,7 +966,7 @@ draw_accuracy_heatmap <- function(accuracy_matrix, c_range, gamma_range, figname
 
 #===============================================================================
 ## Function21: auc_boot_cv
-auc_boot_cv <- function(df,nfold,koi,nBoot,plotROC,cond_col){
+auc_boot_cv <- function(df,nfold,koi,nBoot,plotROC,cond_col,filename){
   
   df[,1] = factor(df[,1], levels = c(0, 1)) 
   df = na.omit(df) 
@@ -1038,17 +1038,18 @@ auc_boot_cv <- function(df,nfold,koi,nBoot,plotROC,cond_col){
       geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray") +
       coord_equal() +
       theme_classic(base_size = 14) +
-      labs(
-        title = "ROC curve (out-of-fold predictions)",
-        x = "False Positive Rate",
-        y = "True Positive Rate",
-        subtitle = sprintf(
-          "AUC = %.3f, 95%% CI [%.3f, %.3f]",
-          mean_auc, CI95[1], CI95[2]
-        )
-      )
+      theme(axis.ticks.length=unit(-0.1, "cm"))+
+      labs(x = "1 - Specificity",
+        y = "Sensitivity")
     print(p)
+    
+    png(filename, width = 5, height = 4, units = "in", res = 300)  # 300DPI高清图片
+    print(p)
+    dev.off()
   }
+  
+  message(sprintf("AUC: %.3f\n95%% CI: [%.3f, %.3f]\n",
+                  mean_auc, CI95[1], CI95[2]))
   
   return(list(
     mean_auc = mean_auc,
