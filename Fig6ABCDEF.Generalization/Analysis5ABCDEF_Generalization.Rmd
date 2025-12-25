@@ -1,5 +1,5 @@
 ---
-title: "Analysis5AB_Generalization"
+title: "Analysis5ABCDEF_Generalization"
 author: "Xiaochun Han"
 date: "2025-12-18"
 output: html_document
@@ -65,7 +65,7 @@ acc_wns_bns = svm_general_accuracy(data1_INS_BINS_invest,data2_INS_BINS_invest)
 ```
 ### AUC
 ```{r svm_auc_both}
-auc_wns_bns = svm_general_auc(data1_INS_BINS_invest,data2_INS_BINS_invest,cond_col = "#FF7E79")
+auc_wns_bns = svm_general_auc(data1_INS_BINS_invest,data2_INS_BINS_invest,cond_col = "#FF7E79",filename = 'general_both_gender_roc_plot.png')
 ```
 
 ### Permutation
@@ -82,11 +82,13 @@ acc_gen_perm$ci95[(acc_gen_perm$acc_perm<acc_low_25|acc_gen_perm$acc_perm>acc_to
 p_perm = mean(acc_wns_bns[[1]]<acc_gen_perm$acc_perm)
 print(p_perm)
 
-ggplot(acc_gen_perm, aes(x = acc_perm, fill = as.factor(ci95))) +
+p <- ggplot(acc_gen_perm, aes(x = acc_perm, fill = as.factor(ci95))) +
     geom_histogram(colour = "#4C4C4C", bins = 33) + 
     scale_fill_manual(values = c("white","#FF7E79"))+
     geom_vline(aes(xintercept = acc_wns_bns[[1]]), color = "#FF7E79", linewidth = 2) + theme_classic()+xlim(0,1) + 
     labs(x = "Win-Lose Prediction Accuracy") + theme(text = element_text(size = 15),legend.position="none",axis.ticks.length=unit(-0.1, "cm"))
+print(p)
+ggsave("General_perm_both_gender.png", plot = p, width = 5, height = 4, dpi = 300)
 ```
 
 ## Male
@@ -96,13 +98,15 @@ acc_wns_bns_male = svm_general_accuracy(data1_INS_BINS_invest,data2_INS_BINS_inv
 ```
 ### AUC
 ```{r svm_auc_male}
-auc_wns_bns_male = svm_general_auc(data1_INS_BINS_invest,data2_INS_BINS_invest_male,cond_col = "#FF7E79")
+auc_wns_bns_male = svm_general_auc(data1_INS_BINS_invest,data2_INS_BINS_invest_male,cond_col = "#FF7E79",filename = 'general_male_roc_plot.png')
 ```
+
 ### Permutation
 ```{r svm_perm_male,eval=FALSE}
 acc_gen_perm_male = svm_general_accuracy_perm(data1_INS_BINS_invest,data2_INS_BINS_invest_male,5000)
 saveRDS(acc_gen_perm_male,"svm_gen_perm_male_INS_BINS_win_5000.RData")
 ```
+
 #### figure
 ```{r svm_perm_figure_male}
 acc_gen_perm_male = readRDS("svm_gen_perm_male_INS_BINS_win_5000.RData")
@@ -113,11 +117,14 @@ acc_gen_perm_male$ci95[(acc_gen_perm_male$acc_perm<acc_low_25|acc_gen_perm_male$
 p_perm = mean(acc_wns_bns_male[[1]]<acc_gen_perm_male$acc_perm)
 print(p_perm)
 
-ggplot(acc_gen_perm_male, aes(x = acc_perm, fill = as.factor(ci95))) +
-    geom_histogram(colour = "#4C4C4C", bins = 33) + 
+
+p<-ggplot(acc_gen_perm_male, aes(x = acc_perm, fill = as.factor(ci95))) +
+    geom_histogram(colour = "#4C4C4C", bins = 18) + 
     scale_fill_manual(values = c("white","#FF7E79"))+
     geom_vline(aes(xintercept = acc_wns_bns_male[[1]]), color = "#FF7E79", linewidth = 2) + theme_classic()+xlim(0,1) + 
     labs(x = "Win-Lose Prediction Accuracy") + theme(text = element_text(size = 15),legend.position="none",axis.ticks.length=unit(-0.1, "cm"))
+print(p)
+ggsave("General_perm_male.png", plot = p, width = 5, height = 4, dpi = 300)
 ```
 
 ## Female
@@ -127,7 +134,7 @@ acc_wns_bns_female = svm_general_accuracy(data1_INS_BINS_invest,data2_INS_BINS_i
 ```
 ### AUC
 ```{r svm_auc_female}
-auc_wns_bns_female = svm_general_auc(data1_INS_BINS_invest,data2_INS_BINS_invest_female,cond_col = "#FF7E79")
+auc_wns_bns_female = svm_general_auc(data1_INS_BINS_invest,data2_INS_BINS_invest_female,cond_col = "#FF7E79",filename = 'general_female_roc_plot.png')
 ```
 
 ### Permutation
@@ -145,9 +152,12 @@ acc_gen_perm_female$ci95[(acc_gen_perm_female$acc_perm<acc_low_25|acc_gen_perm_f
 p_perm = mean(acc_wns_bns_female[[1]]<acc_gen_perm_female$acc_perm)
 print(p_perm)
 
-ggplot(acc_gen_perm_female, aes(x = acc_perm, fill = as.factor(ci95))) +
-    geom_histogram(colour = "#4C4C4C", bins = 33) + 
+
+p <- ggplot(acc_gen_perm_female, aes(x = acc_perm, fill = as.factor(ci95))) +
+    geom_histogram(colour = "#4C4C4C", bins = 18) + 
     scale_fill_manual(values = c("white","#FF7E79"))+
     geom_vline(aes(xintercept = acc_wns_bns_female[[1]]), color = "#FF7E79", linewidth = 2) + theme_classic()+xlim(0,1) + 
     labs(x = "Win-Lose Prediction Accuracy") + theme(text = element_text(size = 15),legend.position="none",axis.ticks.length=unit(-0.1, "cm"))
+print(p)
+ggsave("General_perm_female.png", plot = p, width = 5, height = 4, dpi = 300)
 ```

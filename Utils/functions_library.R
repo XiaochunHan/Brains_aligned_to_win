@@ -266,8 +266,8 @@ svm_general_accuracy <- function(df1,df2){
   ci_upper <- ci_level[2]
   ci_method_used <- "Bootstrap"
 
-  cat("均值:", round(accuracy, 4), "\n")
   cat("下限:", round(ci_lower, 4), "\n")
+  cat("均值:", round(accuracy, 4), "\n")
   cat("上限:", round(ci_upper, 4), "\n")
   cat("方法:", ci_method_used, "\n")
   return(list(accuracy,
@@ -1267,7 +1267,7 @@ perform_tuning_anova <- function(anova_data) {
 
 #===============================================================================
 ## Function26: svm_general_auc
-svm_general_auc <- function(train_df, test_df, nBoot = 1000, plotROC = TRUE, cond_col = "blue") {
+svm_general_auc <- function(train_df, test_df, nBoot = 1000, plotROC = TRUE, cond_col = "blue",filename = 'general_roc_plot.png') {
   
   train_df[,1] <- factor(train_df[,1], levels = c(0, 1))
   test_df[,1] <- factor(test_df[,1], levels = c(0, 1))
@@ -1338,17 +1338,18 @@ svm_general_auc <- function(train_df, test_df, nBoot = 1000, plotROC = TRUE, con
       geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray") +
       coord_equal() +
       theme_classic(base_size = 14) +
-      labs(
-        title = "ROC Curve (Independent Test Set)",
-        x = "False Positive Rate",
-        y = "True Positive Rate",
-        subtitle = sprintf(
-          "AUC = %.3f, 95%% CI [%.3f, %.3f]",
-          mean_auc, CI95[1], CI95[2]
-        )
-      )
+      theme(axis.ticks.length=unit(-0.1, "cm"))+
+      labs(x = "1 - Specificity",
+           y = "Sensitivity")
     print(p)
+    
+    png(filename, width = 5, height = 4, units = "in", res = 300)  # 300DPI高清图片
+    print(p)
+    dev.off()
   }
+  
+  message(sprintf("AUC: %.3f\n95%% CI: [%.3f, %.3f]\n",
+                  mean_auc, CI95[1], CI95[2]))
   
   return(list(
     mean_auc = mean_auc,
