@@ -22,12 +22,13 @@ dataset_pseudo$ci95 = rep(0,1000)
 dataset_pseudo$ci95[(dataset_pseudo$perm_acc<acc_low_25|dataset_pseudo$perm_acc>acc_top_25)] = 1
 acc_all = 0.9212
 p_perm = mean(acc_all<dataset_pseudo$perm_acc)
+print(p_perm)
 
 p<-ggplot(dataset_pseudo, aes(x = (perm_acc-acc_all), fill = as.factor(ci95))) +
-    geom_histogram(colour = "#4C4C4C", bins = 61) + 
+    geom_histogram(colour = "#4C4C4C", bins = 30) + 
     scale_fill_manual(values = c("white","#B095C6"))+ theme_classic()+xlim(-0.4,0.1) +
-    geom_vline(aes(xintercept = 0), color = "#4C4C4C", linewidth = 1) + 
-    labs(x = "Decreased Accuracy") + theme(text = element_text(size = 25),legend.position="none",axis.ticks.length=unit(-0.1, "cm"))
+    geom_vline(aes(xintercept = 0), color = "#4C4C4C", linewidth = 1, linetype = "dashed") + 
+    labs(x = "Decreased Accuracy") + theme(text = element_text(size = 15),legend.position="none",axis.ticks.length=unit(-0.1, "cm"))
 print(p)
 ggsave("Pseudo_pair_control.png", plot = p, width = 5, height = 4, dpi = 300)
 ```
@@ -41,12 +42,13 @@ dataset_circular$ci95 = rep(0,1000)
 dataset_circular$ci95[(dataset_circular$perm_acc<acc_low_25|dataset_circular$perm_acc>acc_top_25)] = 1
 acc_all = 0.9212
 p_perm = mean(acc_all<dataset_circular$perm_acc)
+print(p_perm)
 
 p<-ggplot(dataset_circular, aes(x = (perm_acc-acc_all), fill = as.factor(ci95))) +
-    geom_histogram(colour = "#4C4C4C", bins = 61) + 
+    geom_histogram(colour = "#4C4C4C", bins = 20) + 
     scale_fill_manual(values = c("white","#B095C6")) +
-    geom_vline(aes(xintercept = 0), color = "#4C4C4C", linewidth = 1) + theme_classic()+xlim(-0.2,0.1) + 
-    labs(x = "Decreased Accuracy") + theme(text = element_text(size = 25),legend.position="none",axis.ticks.length=unit(-0.1, "cm"))
+    geom_vline(aes(xintercept = 0), color = "#4C4C4C", linewidth = 1, linetype = "dashed") + theme_classic()+xlim(-0.2,0.1) + 
+    labs(x = "Decreased Accuracy") + theme(text = element_text(size = 15),legend.position="none",axis.ticks.length=unit(-0.1, "cm"))
 print(p)
 ggsave("Circular_time_control.png", plot = p, width = 5, height = 4, dpi = 300)
 ```
@@ -54,12 +56,12 @@ ggsave("Circular_time_control.png", plot = p, width = 5, height = 4, dpi = 300)
 ## Match 12 trial
 ### Import data
 ```{r import_data}
-setwd('/Users/xiaochunhan/Documents/Research/Projects/DaFD/P02_Data/D01_all_feature_each_trial/Study1-DaFC')
+setwd('../Data/Develop')
 wd<-getwd()
-dataset_BOLD <- read.csv('BOLD_single_trial.csv',header=TRUE,sep=",")
-dataset_FC <- read.csv('FC_single_trial.csv',header=TRUE,sep=",")
-dataset_BINS <- read.csv('BINS_single_trial.csv',header=TRUE,sep=",")
-dataset_INS <- read.csv('INS_single_trial.csv',header=TRUE,sep=",")
+dataset_BOLD <- read.csv('BOLD_single_trial_invest.csv',header=TRUE,sep=",")
+dataset_FC <- read.csv('FC_single_trial_invest.csv',header=TRUE,sep=",")
+dataset_BINS <- read.csv('BINS_single_trial_invest.csv',header=TRUE,sep=",")
+dataset_INS <- read.csv('INS_single_trial_invest.csv',header=TRUE,sep=",")
 dataset_y <- read.csv('win_lose_and_pay_single_trial.csv',header=TRUE,sep=",")
 dataset_y_attack <- dataset_y[dataset_y$role.A.1. == 1,]
 dataset_y_attack <- dataset_y_attack[-c(4,14,22),] # Three sessions are deleted due to the absent of winning trial(4,22) and brain signal(14). 
@@ -97,13 +99,13 @@ saveRDS(permACC_inter, file = "SVM_win_INS_BINS_perm_5000_match_12.RData")
 #### figure
 ```{r hist_INS&BINS}
 acc_match_inter_perm = readRDS("SVM_win_INS_BINS_perm_5000_match_12.RData")
-
+colnames(acc_match_inter_perm) = "acc_perm"
 acc_low_25 = sort(acc_match_inter_perm$acc_perm)[125]
 acc_top_25 = sort(acc_match_inter_perm$acc_perm)[4875]
 acc_match_inter_perm$ci95 = rep(0,5000)
 acc_match_inter_perm$ci95[(acc_match_inter_perm$acc_perm<acc_low_25|acc_match_inter_perm$acc_perm>acc_top_25)] = 1
 
-p_match_inter_perm = mean(meanACC_inter<acc_match_inter_perm)
+p_match_inter_perm = mean(meanACC_inter<acc_match_inter_perm$acc_perm)
 print(p_match_inter_perm)
 
 p <- ggplot(acc_match_inter_perm, aes(x = acc_perm, fill = as.factor(ci95))) +
@@ -117,7 +119,7 @@ ggsave("Match12_perm_INS_BINS.png", plot = p, width = 5, height = 4, dpi = 300)
 
 ### Intra-brain Match
 #### Accuracy
-```{r permute_BOLD&FC}
+```{r acc_BOLD&FC}
 ACC_intra = data.frame();
 for (i in 1:100){
   BOLD_mean = extract_match_win_lose_mean(dataset_BOLD,dataset_y_attack,"BOLD_",12)
@@ -148,19 +150,19 @@ saveRDS(permACC_intra, file = "SVM_win_BOLD_FC_perm_5000_match_12.RData")
 #### figure
 ```{r hist_BOLD&FC}
 acc_match_intra_perm = readRDS("SVM_win_BOLD_FC_perm_5000_match_12.RData")
-
+colnames(acc_match_intra_perm) = "acc_perm"
 acc_low_25 = sort(acc_match_intra_perm$acc_perm)[125]
 acc_top_25 = sort(acc_match_intra_perm$acc_perm)[4875]
 acc_match_intra_perm$ci95 = rep(0,5000)
 acc_match_intra_perm$ci95[(acc_match_intra_perm$acc_perm<acc_low_25|acc_match_intra_perm$acc_perm>acc_top_25)] = 1
 
-p_match_intra_perm = mean(meanACC_intra<acc_match_intra_perm)
+p_match_intra_perm = mean(meanACC_intra<acc_match_intra_perm$acc_perm)
 print(p_match_intra_perm)
 
 p <- ggplot(acc_match_intra_perm, aes(x = acc_perm, fill = as.factor(ci95))) +
     geom_histogram(colour = "#4C4C4C", bins = 61) + 
-    scale_fill_manual(values = c("white","#B095C6"))+
-    geom_vline(aes(xintercept = meanACC_intra), color = "#B095C6", linewidth = 2) + theme_classic()+xlim(0,1) + 
+    scale_fill_manual(values = c("white","#969796"))+
+    geom_vline(aes(xintercept = meanACC_intra), color = "#969796", linewidth = 2) + theme_classic()+xlim(0,1) + 
     labs(x = "Win-Lose Prediction Accuracy") + theme(text = element_text(size = 15),legend.position="none",axis.ticks.length=unit(-0.1, "cm"))
 print(p)
 ggsave("Match12_perm_BOLD_FC.png", plot = p, width = 5, height = 4, dpi = 300)
