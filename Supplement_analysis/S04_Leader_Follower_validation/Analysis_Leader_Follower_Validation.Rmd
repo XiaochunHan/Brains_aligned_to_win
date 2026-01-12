@@ -1,0 +1,56 @@
+---
+title: "Analysis_Leader_Follower_Validation"
+author: "Xiaochun Han"
+date: "2026-01-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+source("../../utils/functions_library.R")
+load_packages(c("dplyr", "caret", "e1071","ggplot2", "pROC", "reshape2", "rstatix","plotrix","psych","readxl","ggpubr","car"))
+```
+
+## reorg data
+```{r reorg data}
+tr <- read_excel('DAFD_Behavior_Neural_30sess_behav_cor_LIME_20250522.xlsx',sheet="raw_data")
+groupSuccess = tr$suss[1:30]
+Invest_Attack_Lead = tr[((tr$roleA1D2 == 1)&(tr$leadL1F2==1)),
+                                   c("contribution")]
+Invest_Attack_Follow = tr[((tr$roleA1D2 == 1)&(tr$leadL1F2==0)),
+                                   c("contribution")]
+Invest_Defend_Lead = tr[((tr$roleA1D2 == 2)&(tr$leadL1F2==1)),
+                                   c("contribution")]
+Invest_Defend_Follow = tr[((tr$roleA1D2 == 2)&(tr$leadL1F2==0)),
+                                   c("contribution")]
+
+names(Invest_Attack_Lead) = c("AL_contribution")
+names(Invest_Attack_Follow) = c("AF_contribution")
+names(Invest_Defend_Lead) = c("DL_contribution")
+names(Invest_Defend_Follow) = c("DF_contribution")
+
+df_org_Invest_Lead = cbind(groupSuccess,Invest_Attack_Lead,Invest_Defend_Lead)
+df_org_Invest_Follow = cbind(groupSuccess,Invest_Attack_Follow,Invest_Defend_Follow)
+```
+
+## Regression
+### linear - Invest - Leader
+```{r linear1}
+model1 <- lm(groupSuccess ~ ., data = df_org_Invest_Lead)
+summary(model1)
+vif(model1)
+```
+
+### linear - Invest - Follow
+```{r linear2}
+model2 <- lm(groupSuccess ~ ., data = df_org_Invest_Follow)
+summary(model2)
+vif(model2)
+```
+
+### Compare- Lead - Follow
+```{r compare}
+AIC(model1, model2)
+BIC(model1, model2)
+```
