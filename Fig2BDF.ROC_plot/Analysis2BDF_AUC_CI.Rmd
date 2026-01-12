@@ -13,7 +13,7 @@ load_packages(c("dplyr", "caret", "e1071","ggplot2", "pROC", "reshape2", "rstati
 ```
 
 ## Import data
-```{r impart data}
+```{r import data}
 setwd('../Data/Develop')
 wd<-getwd()
 dataset_BOLD <- read.csv('BOLD_single_trial_invest.csv',header=TRUE,sep=",")
