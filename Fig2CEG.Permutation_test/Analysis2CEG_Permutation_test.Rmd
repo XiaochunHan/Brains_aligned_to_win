@@ -13,7 +13,7 @@ load_packages(c("dplyr", "caret", "e1071","ggplot2", "pROC", "reshape2", "rstati
 ```
 
 ## Import data
-```{r impart data, eval=FALSE}
+```{r import data, eval=FALSE}
 setwd('../Data/Develop')
 wd<-getwd()
 dataset_BOLD <- read.csv('BOLD_single_trial_invest.csv',header=TRUE,sep=",")
@@ -48,14 +48,23 @@ data_minus_FC_invest = cbind(INS_mean[,c(1,3:ncol(INS_mean))],BINS_mean[,3:ncol(
 
 
 ## Permutation Test
-```{r permute_test, eval=FALSE}
+###  5-fold
+```{r permute_test-5, eval=FALSE}
 acc_all_perm = svm_perm(data_all_invest,5,5000,"radial")
 acc_ins_bins_perm = svm_perm(data_INS_BINS_invest,5,5000,"radial")
 acc_bold_fc_perm = svm_perm(data_BOLD_FC_invest,5,5000,"radial")
 ```
 
+###  1-session-out
+```{r permute_test-1, eval=FALSE}
+acc_all_perm = svm_perm(data_all_invest,1,5000,"radial")
+acc_ins_bins_perm = svm_perm(data_INS_BINS_invest,1,5000,"radial")
+acc_bold_fc_perm = svm_perm(data_BOLD_FC_invest,1,5000,"radial")
+```
+
 ### Full Model
-```{r permute_all}
+####  5-fold
+```{r permute_all-5}
 acc_all_perm = readRDS("SVM_win_all_perm_5000.RData")
 acc_all_low_25 = sort(acc_all_perm$acc_perm)[125]
 acc_all_top_25 = sort(acc_all_perm$acc_perm)[4875]
@@ -63,6 +72,26 @@ acc_all_perm$ci95 = rep(0,5000)
 acc_all_perm$ci95[(acc_all_perm$acc_perm<acc_all_low_25|acc_all_perm$acc_perm>acc_all_top_25)] = 1
 acc_all = 0.7618
 p_all_perm = mean(acc_all<acc_all_perm$acc_perm)
+print(p_all_perm)
+
+p<-ggplot(acc_all_perm, aes(x = acc_perm, fill = as.factor(ci95))) +
+    geom_histogram(colour = "#4C4C4C", bins = 61) + 
+    scale_fill_manual(values = c("white","#000000"))+
+    geom_vline(aes(xintercept = acc_all), color = "#000000", linewidth = 1.5) + theme_classic()+xlim(0,1) + 
+    labs(x = "Win-Lose Prediction Accuracy") + theme(text = element_text(size = 15),legend.position="none",axis.ticks.length=unit(-0.1, "cm"))
+print(p)
+```
+
+####  1-session-out
+```{r permute_all-1}
+acc_all_perm = readRDS("SVM_win_all_perm_one_session_out_5000.RData")
+acc_all_low_25 = sort(acc_all_perm$acc_perm)[125]
+acc_all_top_25 = sort(acc_all_perm$acc_perm)[4875]
+acc_all_perm$ci95 = rep(0,5000)
+acc_all_perm$ci95[(acc_all_perm$acc_perm<acc_all_low_25|acc_all_perm$acc_perm>acc_all_top_25)] = 1
+acc_all = 0.7667
+p_all_perm = mean(acc_all<acc_all_perm$acc_perm)
+print(p_all_perm)
 
 p<-ggplot(acc_all_perm, aes(x = acc_perm, fill = as.factor(ci95))) +
     geom_histogram(colour = "#4C4C4C", bins = 61) + 
@@ -73,7 +102,8 @@ print(p)
 ```
 
 ### Inter-Brain Model
-```{r permute_INS&BINS}
+####  5-fold
+```{r permute_INS&BINS-5}
 acc_wns_bns_perm = readRDS("SVM_win_INS_BINS_perm_5000.RData")
 acc_low_25 = sort(acc_wns_bns_perm$acc_perm)[125]
 acc_top_25 = sort(acc_wns_bns_perm$acc_perm)[4875]
@@ -81,6 +111,26 @@ acc_wns_bns_perm$ci95 = rep(0,5000)
 acc_wns_bns_perm$ci95[(acc_wns_bns_perm$acc_perm<acc_low_25|acc_wns_bns_perm$acc_perm>acc_top_25)] = 1
 acc_wns_bns = 0.9212
 p_wns_bns_perm = mean(acc_wns_bns<acc_wns_bns_perm$acc_perm)
+print(p_wns_bns_perm)
+
+p<-ggplot(acc_wns_bns_perm, aes(x = acc_perm, fill = as.factor(ci95))) +
+    geom_histogram(colour = "#4C4C4C", bins = 61) + 
+    scale_fill_manual(values = c("white","#B095C6"))+
+    geom_vline(aes(xintercept = acc_wns_bns), color = "#B095C6", linewidth = 2) + theme_classic()+xlim(0,1) + 
+    labs(x = "Win-Lose Prediction Accuracy") + theme(text = element_text(size = 15),legend.position="none",axis.ticks.length=unit(-0.1, "cm"))
+print(p)
+```
+
+####  1-session-out
+```{r permute_INS&BINS-1}
+acc_wns_bns_perm = readRDS("SVM_win_WNC_BNC_perm_one_session_out_5000.RData")
+acc_low_25 = sort(acc_wns_bns_perm$acc_perm)[125]
+acc_top_25 = sort(acc_wns_bns_perm$acc_perm)[4875]
+acc_wns_bns_perm$ci95 = rep(0,5000)
+acc_wns_bns_perm$ci95[(acc_wns_bns_perm$acc_perm<acc_low_25|acc_wns_bns_perm$acc_perm>acc_top_25)] = 1
+acc_wns_bns = 0.9167
+p_wns_bns_perm = mean(acc_wns_bns<acc_wns_bns_perm$acc_perm)
+print(p_wns_bns_perm)
 
 p<-ggplot(acc_wns_bns_perm, aes(x = acc_perm, fill = as.factor(ci95))) +
     geom_histogram(colour = "#4C4C4C", bins = 61) + 
@@ -92,7 +142,8 @@ print(p)
 
 
 ### Intra-Brain Model
-```{r svm_invest_BOLD&FC}
+####  5-fold
+```{r svm_invest_BOLD&FC-5}
 acc_bold_fc_perm = readRDS("SVM_win_BOLD_FC_perm_5000.RData")
 acc_low_25 = sort(acc_bold_fc_perm$acc_perm)[125]
 acc_top_25 = sort(acc_bold_fc_perm$acc_perm)[4875]
@@ -100,6 +151,26 @@ acc_bold_fc_perm$ci95 = rep(0,5000)
 acc_bold_fc_perm$ci95[(acc_bold_fc_perm$acc_perm<acc_low_25|acc_bold_fc_perm$acc_perm>acc_top_25)] = 1
 acc_bold_fc = 0.5823
 p_bold_fc_perm = mean(acc_bold_fc<acc_bold_fc_perm$acc_perm)
+print(p_bold_fc_perm)
+
+p<-ggplot(acc_bold_fc_perm, aes(x = acc_perm, fill = as.factor(ci95))) +
+    geom_histogram(colour = "#4C4C4C", bins = 61) + 
+    scale_fill_manual(values = c("white","#969796"))+
+    geom_vline(aes(xintercept = acc_bold_fc), color = "#969796", linewidth = 2) + theme_classic()+xlim(0,1) + 
+    labs(x = "Win-Lose Prediction Accuracy") + theme(text = element_text(size = 15),legend.position="none",axis.ticks.length=unit(-0.1, "cm"))
+print(p)
+```
+
+####  1-session-out
+```{r svm_invest_BOLD&FC-1}
+acc_bold_fc_perm = readRDS("SVM_win_BOLD_FC_perm_one_session_out_5000.RData")
+acc_low_25 = sort(acc_bold_fc_perm$acc_perm)[125]
+acc_top_25 = sort(acc_bold_fc_perm$acc_perm)[4875]
+acc_bold_fc_perm$ci95 = rep(0,5000)
+acc_bold_fc_perm$ci95[(acc_bold_fc_perm$acc_perm<acc_low_25|acc_bold_fc_perm$acc_perm>acc_top_25)] = 1
+acc_bold_fc = 0.6
+p_bold_fc_perm = mean(acc_bold_fc<acc_bold_fc_perm$acc_perm)
+print(p_bold_fc_perm)
 
 p<-ggplot(acc_bold_fc_perm, aes(x = acc_perm, fill = as.factor(ci95))) +
     geom_histogram(colour = "#4C4C4C", bins = 61) + 

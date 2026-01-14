@@ -369,19 +369,11 @@ dataset_y &lt;- read.csv(&#39;win_lose_and_pay_single_trial.csv&#39;,header=TRUE
 dataset_y_attack &lt;- dataset_y[dataset_y$role.A.1. == 1,]
 dataset_y_attack &lt;- dataset_y_attack[-c(4,14,22),] # Three sessions are deleted due to the absent of winning trial(4,22) and brain signal(14). 
 
-BOLD_mean = extract_win_or_pay_mean(dataset_BOLD,dataset_y_attack,&quot;BOLD_&quot;,&quot;win&quot;,FALSE)</code></pre>
-<pre><code>## Using Agood as value column: use value.var to override.</code></pre>
-<pre><code>## Using Abad as value column: use value.var to override.</code></pre>
-<pre class="r"><code>FC_mean = extract_win_or_pay_mean(dataset_FC,dataset_y_attack,&quot;FC_&quot;,&quot;win&quot;,FALSE)</code></pre>
-<pre><code>## Using Agood as value column: use value.var to override.
-## Using Abad as value column: use value.var to override.</code></pre>
-<pre class="r"><code>INS_mean = extract_win_or_pay_mean(dataset_INS,dataset_y_attack,&quot;WNS_&quot;,&quot;win&quot;,FALSE)</code></pre>
-<pre><code>## Using Agood as value column: use value.var to override.
-## Using Abad as value column: use value.var to override.</code></pre>
-<pre class="r"><code>BINS_mean = extract_win_or_pay_mean(dataset_BINS,dataset_y_attack,&quot;BNS_&quot;,&quot;win&quot;,FALSE)</code></pre>
-<pre><code>## Using Agood as value column: use value.var to override.
-## Using Abad as value column: use value.var to override.</code></pre>
-<pre class="r"><code>data_all_invest = cbind(BOLD_mean[,c(1,3:ncol(BOLD_mean))],FC_mean[,3:ncol(FC_mean)],INS_mean[,3:ncol(INS_mean)],BINS_mean[,3:ncol(BINS_mean)])
+BOLD_mean = extract_win_or_pay_mean(dataset_BOLD,dataset_y_attack,&quot;BOLD_&quot;,&quot;win&quot;,FALSE)
+FC_mean = extract_win_or_pay_mean(dataset_FC,dataset_y_attack,&quot;FC_&quot;,&quot;win&quot;,FALSE)
+INS_mean = extract_win_or_pay_mean(dataset_INS,dataset_y_attack,&quot;WNS_&quot;,&quot;win&quot;,FALSE)
+BINS_mean = extract_win_or_pay_mean(dataset_BINS,dataset_y_attack,&quot;BNS_&quot;,&quot;win&quot;,FALSE)
+data_all_invest = cbind(BOLD_mean[,c(1,3:ncol(BOLD_mean))],FC_mean[,3:ncol(FC_mean)],INS_mean[,3:ncol(INS_mean)],BINS_mean[,3:ncol(BINS_mean)])
 data_all_invest_rev = data_all_invest[rev(rownames(data_all_invest)),]
 data_all_invest_both = as.matrix(data_all_invest_rev[,2:ncol(data_all_invest_rev)])
 
@@ -410,69 +402,96 @@ data_minus_FC_invest = cbind(INS_mean[,c(1,3:ncol(INS_mean))],BINS_mean[,3:ncol(
 <h2>Predicting win vs. lose</h2>
 <div id="all-features" class="section level3">
 <h3>All features</h3>
+<div id="fold" class="section level4">
+<h4>5-fold</h4>
 <pre class="r"><code>acc_all = svm_cv_accuracy(data_all_invest,5,100,&quot;radial&quot;)
 print(acc_all)</code></pre>
-<pre><code>## [1] 0.7643333</code></pre>
+<pre><code>## [1] 0.767</code></pre>
+</div>
+<div id="session-out" class="section level4">
+<h4>1-session-out</h4>
+<pre class="r"><code>acc_all = svm_cv_accuracy(data_all_invest,30,1,&quot;radial&quot;)
+print(acc_all)</code></pre>
+<pre><code>## [1] 0.7666667</code></pre>
+</div>
 </div>
 <div id="bold-and-fc" class="section level3">
 <h3>BOLD and FC</h3>
+<div id="fold-1" class="section level4">
+<h4>5-fold</h4>
 <pre class="r"><code>acc_bold_fc = svm_cv_accuracy(data_BOLD_FC_invest,5,100,&quot;radial&quot;)
 print(acc_bold_fc)</code></pre>
-<pre><code>## [1] 0.5881667</code></pre>
+<pre><code>## [1] 0.5871667</code></pre>
+</div>
+<div id="session-out-1" class="section level4">
+<h4>1-session-out</h4>
+<pre class="r"><code>acc_bold_fc = svm_cv_accuracy(data_BOLD_FC_invest,30,1,&quot;radial&quot;)
+print(acc_bold_fc)</code></pre>
+<pre><code>## [1] 0.6</code></pre>
+</div>
 </div>
 <div id="ins-and-bins" class="section level3">
 <h3>INS and BINS</h3>
+<div id="fold-2" class="section level4">
+<h4>5-fold</h4>
 <pre class="r"><code>acc_ins_bins = svm_cv_accuracy(data_INS_BINS_invest,5,100,&quot;radial&quot;)
 print(acc_ins_bins)</code></pre>
-<pre><code>## [1] 0.9201667</code></pre>
+<pre><code>## [1] 0.92</code></pre>
+</div>
+<div id="session-out-2" class="section level4">
+<h4>1-session-out</h4>
+<pre class="r"><code>acc_ins_bins = svm_cv_accuracy(data_INS_BINS_invest,30,1,&quot;radial&quot;)
+print(acc_ins_bins)</code></pre>
+<pre><code>## [1] 0.9166667</code></pre>
+</div>
 </div>
 <div id="minus-wns" class="section level3">
 <h3>minus WNS</h3>
 <pre class="r"><code>acc_minus_wns = svm_cv_accuracy(data_minus_WNS_invest,5,100,&quot;radial&quot;)
 print(acc_minus_wns)</code></pre>
-<pre><code>## [1] 0.6841667</code></pre>
+<pre><code>## [1] 0.6835</code></pre>
 </div>
 <div id="minus-bns" class="section level3">
 <h3>minus BNS</h3>
 <pre class="r"><code>acc_minus_bns = svm_cv_accuracy(data_minus_BNS_invest,5,100,&quot;radial&quot;)
 print(acc_minus_bns)</code></pre>
-<pre><code>## [1] 0.657</code></pre>
+<pre><code>## [1] 0.6585</code></pre>
 </div>
 <div id="minus-bold" class="section level3">
 <h3>minus BOLD</h3>
 <pre class="r"><code>acc_minus_bold = svm_cv_accuracy(data_minus_BOLD_invest,5,100,&quot;radial&quot;)
 print(acc_minus_bold)</code></pre>
-<pre><code>## [1] 0.7625</code></pre>
+<pre><code>## [1] 0.762</code></pre>
 </div>
 <div id="minus-fc" class="section level3">
 <h3>minus FC</h3>
 <pre class="r"><code>acc_minus_fc = svm_cv_accuracy(data_minus_FC_invest,5,100,&quot;radial&quot;)
 print(acc_minus_fc)</code></pre>
-<pre><code>## [1] 0.8875</code></pre>
+<pre><code>## [1] 0.8856667</code></pre>
 </div>
 <div id="ins" class="section level3">
 <h3>INS</h3>
 <pre class="r"><code>acc_wns = svm_cv_accuracy(data_WNS_invest,5,100,&quot;radial&quot;)
 print(acc_wns)</code></pre>
-<pre><code>## [1] 0.8753333</code></pre>
+<pre><code>## [1] 0.876</code></pre>
 </div>
 <div id="bns" class="section level3">
 <h3>BNS</h3>
 <pre class="r"><code>acc_bns = svm_cv_accuracy(data_BNS_invest,5,100,&quot;radial&quot;)
 print(acc_bns)</code></pre>
-<pre><code>## [1] 0.882</code></pre>
+<pre><code>## [1] 0.8846667</code></pre>
 </div>
 <div id="bold" class="section level3">
 <h3>BOLD</h3>
 <pre class="r"><code>acc_bold = svm_cv_accuracy(data_BOLD_invest,5,100,&quot;radial&quot;)
 print(acc_bold)</code></pre>
-<pre><code>## [1] 0.6151667</code></pre>
+<pre><code>## [1] 0.6061667</code></pre>
 </div>
 <div id="fc" class="section level3">
 <h3>FC</h3>
 <pre class="r"><code>acc_fc = svm_cv_accuracy(data_FC_invest,5,100,&quot;radial&quot;)
 print(acc_fc)</code></pre>
-<pre><code>## [1] 0.5581667</code></pre>
+<pre><code>## [1] 0.5528333</code></pre>
 </div>
 </div>
 

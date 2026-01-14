@@ -53,20 +53,41 @@ heatmap(data_all_invest_both,Colv = NA, Rowv = NA, scale = "column", col = hcl.c
 
 ## Predicting win vs. lose
 ### All features
-```{r svm_invest_all}
+#### 5-fold
+```{r svm_invest_all-5}
 acc_all = svm_cv_accuracy(data_all_invest,5,100,"radial")
 print(acc_all)
 ```
 
+#### 1-session-out
+```{r svm_invest_all-1}
+acc_all = svm_cv_accuracy(data_all_invest,30,1,"radial")
+print(acc_all)
+```
+
 ### BOLD and FC
-```{r svm_invest_BOLD&FC}
+#### 5-fold
+```{r svm_invest_BOLD&FC-5}
 acc_bold_fc = svm_cv_accuracy(data_BOLD_FC_invest,5,100,"radial")
 print(acc_bold_fc)
 ```
 
+#### 1-session-out
+```{r svm_invest_BOLD&FC-1}
+acc_bold_fc = svm_cv_accuracy(data_BOLD_FC_invest,30,1,"radial")
+print(acc_bold_fc)
+```
+
 ### INS and BINS
-```{r svm_invest_INS&BINS}
+#### 5-fold
+```{r svm_invest_INS&BINS-5}
 acc_ins_bins = svm_cv_accuracy(data_INS_BINS_invest,5,100,"radial")
+print(acc_ins_bins)
+```
+
+#### 1-session-out
+```{r svm_invest_INS&BINS-1}
+acc_ins_bins = svm_cv_accuracy(data_INS_BINS_invest,30,1,"radial")
 print(acc_ins_bins)
 ```
 
