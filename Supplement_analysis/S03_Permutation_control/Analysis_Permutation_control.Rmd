@@ -16,6 +16,7 @@ load_packages(c("dplyr", "caret", "e1071","ggplot2", "pROC", "reshape2", "rstati
 ```{r import data}
 dataset_pseudo <- read.csv('Pseudo_pair_control.csv',header=TRUE,sep=",")
 dataset_circular <- read.csv('Circular_time_control.csv',header=TRUE,sep=",")
+dataset_pseudo_and_circular <- read.csv('Pseudo_pair_circular_control.csv',header=TRUE,sep=",")
 dataset_machine_same <- read.csv('Same_machine_control.csv',header=TRUE,sep=",")
 dataset_machine_diff <- read.csv('Diff_machine_control.csv',header=TRUE,sep=",")
 ```
@@ -50,6 +51,23 @@ p<-ggplot(dataset_circular, aes(x = Var1, fill = as.factor(ci95))) +
     geom_histogram(colour = "#4C4C4C", bins = 61) + 
     scale_fill_manual(values = c("white","#B095C6"))+
     geom_vline(aes(xintercept = acc_all), color = "#B095C6", linewidth = 2) + theme_classic()+xlim(0.7,1) + 
+    labs(x = "Win-Lose Prediction Accuracy") + theme(text = element_text(size = 25),legend.position="none",axis.ticks.length=unit(-0.1, "cm"))
+print(p)
+```
+
+### Pseudo_pair_and_circular_control
+```{r permute_pseudo}
+acc_low_25 = sort(dataset_pseudo_and_circular$Var1)[25]
+acc_top_25 = sort(dataset_pseudo_and_circular$Var1)[975]
+dataset_pseudo_and_circular$ci95 = rep(0,1000)
+dataset_pseudo_and_circular$ci95[(dataset_pseudo_and_circular$Var1<acc_low_25|dataset_pseudo_and_circular$Var1>acc_top_25)] = 1
+acc_all = 0.9212
+p_perm = mean(acc_all<dataset_pseudo_and_circular$Var1)
+
+p<-ggplot(dataset_pseudo_and_circular, aes(x = Var1, fill = as.factor(ci95))) +
+    geom_histogram(colour = "#4C4C4C", bins = 61) + 
+    scale_fill_manual(values = c("white","#B095C6"))+
+    geom_vline(aes(xintercept = acc_all), color = "#B095C6", linewidth = 2) + theme_classic()+xlim(0.5,1) + 
     labs(x = "Win-Lose Prediction Accuracy") + theme(text = element_text(size = 25),legend.position="none",axis.ticks.length=unit(-0.1, "cm"))
 print(p)
 ```

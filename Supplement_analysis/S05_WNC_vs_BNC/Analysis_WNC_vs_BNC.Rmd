@@ -1,0 +1,82 @@
+---
+title: "Analysis_WNC_vs_BNC"
+author: "Xiaochun Han"
+date: "2026-01-14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+source("../../utils/functions_library.R")
+load_packages(c("dplyr", "caret", "e1071","ggplot2", "pROC", "reshape2", "rstatix","tidyr","stringr"))
+```
+
+## Import data
+```{r import data}
+setwd('../../Data/Develop')
+wd<-getwd()
+dataset_BINS <- read.csv('BINS_single_trial_invest.csv',header=TRUE,sep=",")
+dataset_INS <- read.csv('INS_single_trial_invest.csv',header=TRUE,sep=",")
+dataset_y <- read.csv('win_lose_and_pay_single_trial.csv',header=TRUE,sep=",")
+dataset_y_attack <- dataset_y[dataset_y$role.A.1. == 1,]
+dataset_y_attack <- dataset_y_attack[-c(4,14,22),] # Three sessions are deleted due to the absent of winning trial(4,22) and brain signal(14). 
+
+INS_mean = extract_win_or_pay_mean(dataset_INS,dataset_y_attack,"WNS_","win",FALSE)
+BINS_mean = extract_win_or_pay_mean(dataset_BINS,dataset_y_attack,"BNS_","win",FALSE)
+
+data_INS_BINS_invest = cbind(INS_mean[,3:ncol(INS_mean)],BINS_mean[,3:ncol(BINS_mean)])
+```
+## Reorg data
+```{r reorg}
+col_names <- names(data_INS_BINS_invest)
+prefixes <- sapply(strsplit(col_names, "_"), function(x) paste(x[1:4], collapse = "_"))
+unique_conditions <- unique(prefixes)
+avg_data <- lapply(unique_conditions, function(cond) {
+  matched_cols <- which(prefixes == cond)  # 匹配当前条件的所有列
+  if (length(matched_cols) > 0) {
+    rowMeans(data_INS_BINS_invest[, matched_cols, drop = FALSE], na.rm = TRUE)  # 处理缺失值
+  } else {
+    rep(NA, nrow(data_INS_BINS_invest))
+  }
+})
+avg_df <- as.data.frame(avg_data)
+names(avg_df) <- unique_conditions
+
+long_data <- pivot_longer(
+  avg_df,
+  cols = everything(),
+  names_to = "condition",
+  values_to = "mean_value"
+)
+
+long_data$BNS_WNS <- sapply(strsplit(long_data$condition, "_"), function(x) x[1])
+long_data$Attack_Defend <- sapply(strsplit(long_data$condition, "_"), function(x) x[2])
+long_data$L_F <- sapply(strsplit(long_data$condition, "_"), function(x) x[3])
+long_data$rTPJ_rDLPFC <- sapply(strsplit(long_data$condition, "_"), function(x) x[4])
+
+long_data$BNS_WNS <- as.factor(long_data$BNS_WNS)
+long_data$Attack_Defend <- as.factor(long_data$Attack_Defend)
+long_data$L_F <- as.factor(long_data$L_F)
+long_data$rTPJ_rDLPFC <- as.factor(long_data$rTPJ_rDLPFC)
+```
+
+## anova
+```{r anova}
+detailed_stats <- long_data %>%
+  group_by(BNS_WNS) %>%
+  summarise(
+    平均值 = mean(mean_value, na.rm = TRUE),
+    标准差 = sd(mean_value, na.rm = TRUE),
+    观测数 = n(),
+    .groups = 'drop'  # 避免分组警告
+  )
+
+# 打印详细分组统计结果
+print("详细分组描述性统计:")
+print(detailed_stats)
+model <- aov(mean_value ~ BNS_WNS * Attack_Defend * L_F * rTPJ_rDLPFC, data = long_data)
+summary(model)
+```
+
+
