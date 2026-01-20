@@ -1,0 +1,57 @@
+---
+title: "S06_Trial_number_influence"
+author: "Xiaochun Han"
+date: "2026-01-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+source("../../utils/functions_library.R")
+load_packages(c("dplyr", "caret", "e1071","ggplot2", "pROC", "reshape2", "rstatix"))
+```
+
+## Import data
+```{r import data}
+setwd('../../Data/Develop')
+wd<-getwd()
+dataset_BNS <- read.csv('BINS_single_trial_invest.csv',header=TRUE,sep=",")
+dataset_WNS <- read.csv('INS_single_trial_invest.csv',header=TRUE,sep=",")
+dataset_y <- read.csv('win_lose_and_pay_single_trial.csv',header=TRUE,sep=",")
+dataset_y_attack <- dataset_y[dataset_y$role.A.1. == 1,]
+dataset_y_attack <- dataset_y_attack[-c(4,14,22),] # Three sessions are deleted due to the absent of winning trial(4,22) and brain signal(14). 
+```
+
+### Trial number influence
+```{r trial number}
+acc_t = data.frame(matrix(nrow = 100, ncol = 0))
+for (t in 1:24){
+  acc_i = data.frame()
+  for (i in 1:100){
+    print(cat(t,i))
+    WNS_mean = extract_match_win_lose_mean(dataset_WNS,dataset_y_attack,"WNS_",t)
+    BNS_mean = extract_match_win_lose_mean(dataset_BNS,dataset_y_attack,"BNS_",t)
+    data_WNS_BNS_invest = cbind(WNS_mean[,c(1,3:ncol(WNS_mean))],BNS_mean[,3:ncol(BNS_mean)])
+    acc_wns_bns = svm_cv_accuracy(data_WNS_BNS_invest,5,1,"radial")
+    acc_i = rbind(acc_i, acc_wns_bns)
+  }
+  acc_t = cbind(acc_t,acc_i)
+}
+colnames(acc_t) = c(1:24)
+saveRDS(acc_t, file = "svm_trial_number_influence_100_24.RData")
+```
+
+#### Plot
+```{r plot1}
+df_trialN = data.frame(N = colnames(acc_t), Acc = colMeans(acc_t), Sd = sapply(acc_t, sd), Group = rep(1,24))
+df_trialN$N = factor(df_trialN$N, levels = c(1:24))
+ggplot(df_trialN, aes(x = N, y = Acc, group = Group)) +
+  geom_hline(yintercept = 0.5, color = "red", size = 0.5) +
+  geom_pointrange(aes(ymin = Acc-Sd, ymax = Acc+Sd),colour = "grey") +
+  geom_smooth(colour = "black") +
+  theme_classic() + 
+  theme(text = element_text(size = 15)) +
+  xlab("Trial Number") +
+  ylab("Prediction Accuracy")
+```

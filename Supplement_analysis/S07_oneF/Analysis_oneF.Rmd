@@ -1,0 +1,98 @@
+---
+title: "Analysis_oneF"
+author: "Xiaochun Han"
+date: "2026-01-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+source("../../utils/functions_library.R")
+load_packages(c("dplyr", "caret", "e1071","ggplot2", "pROC", "reshape2", "rstatix"))
+```
+
+## Import data
+```{r impart data}
+setwd('../../Data/Develop')
+wd<-getwd()
+dataset_BOLD <- read.csv('BOLD_single_trial_invest_oneF.csv',header=TRUE,sep=",")
+dataset_FC <- read.csv('FC_single_trial_invest_oneF.csv',header=TRUE,sep=",")
+dataset_BINS <- read.csv('BINS_single_trial_invest_oneF.csv',header=TRUE,sep=",")
+dataset_INS <- read.csv('INS_single_trial_invest_oneF.csv',header=TRUE,sep=",")
+dataset_y <- read.csv('win_lose_and_pay_single_trial.csv',header=TRUE,sep=",")
+dataset_y_attack <- dataset_y[dataset_y$role.A.1. == 1,]
+dataset_y_attack <- dataset_y_attack[-c(4,14,22),] # Three sessions are deleted due to the absent of winning trial(4,22) and brain signal(14). 
+
+BOLD_mean = extract_win_or_pay_mean(dataset_BOLD,dataset_y_attack,"BOLD_","win",FALSE,FALSE)
+FC_mean = extract_win_or_pay_mean(dataset_FC,dataset_y_attack,"FC_","win",FALSE,FALSE)
+INS_mean = extract_win_or_pay_mean(dataset_INS,dataset_y_attack,"WNS_","win",FALSE,FALSE)
+BINS_mean = extract_win_or_pay_mean(dataset_BINS,dataset_y_attack,"BNS_","win",FALSE,FALSE)
+data_all_invest = cbind(BOLD_mean[,c(1,3:ncol(BOLD_mean))],FC_mean[,3:ncol(FC_mean)],INS_mean[,3:ncol(INS_mean)],BINS_mean[,3:ncol(BINS_mean)])
+data_all_invest_rev = data_all_invest[rev(rownames(data_all_invest)),]
+data_all_invest_both = as.matrix(data_all_invest_rev[,2:ncol(data_all_invest_rev)])
+
+data_INS_BINS_invest = cbind(INS_mean[,c(1,3:ncol(INS_mean))],BINS_mean[,3:ncol(BINS_mean)])
+data_BOLD_FC_invest = cbind(BOLD_mean[,c(1,3:ncol(BOLD_mean))],FC_mean[,3:ncol(FC_mean)])
+```
+
+## Predicting win vs. lose
+### All features
+#### 5-fold
+```{r svm_invest_all-5}
+acc_all = svm_cv_accuracy(data_all_invest,5,100,"radial")
+print(acc_all)
+```
+
+### BOLD and FC
+#### 5-fold
+```{r svm_invest_BOLD&FC-5}
+acc_bold_fc = svm_cv_accuracy(data_BOLD_FC_invest,5,100,"radial")
+print(acc_bold_fc)
+```
+
+### INS and BINS
+#### 5-fold
+```{r svm_invest_INS&BINS-5}
+acc_ins_bins = svm_cv_accuracy(data_INS_BINS_invest,5,100,"radial")
+print(acc_ins_bins)
+```
+
+## AUC win vs. lose
+### All features
+```{r auc_invest_all}
+auc_all = auc_boot_cv(data_all_invest,5,"radial",1000,TRUE,'#000000','data_all_invest_roc_plot.png')
+```
+
+### BOLD and FC
+```{r auc_invest_BOLD&FC}
+auc_bold_fc = auc_boot_cv(data_BOLD_FC_invest,5,"radial",1000,TRUE,'#ACACAC','data_BOLD_FC_invest_roc_plot.png')
+```
+
+### INS and BINS
+```{r auc_invest_INS&BINS}
+auc_ins_bins = auc_boot_cv(data_INS_BINS_invest,5,"radial",1000,TRUE,'#AD91C4','data_INS_BINS_invest_roc_plot.png')
+```
+
+## Compare model performance
+### DeLong test with AUC
+```{r compare_models_delong}
+score_list <- list(
+  SVM_all   = auc_all$y_score_all,
+  SVM_intra   = auc_bold_fc$y_score_all,
+  SVM_inter  = auc_ins_bins$y_score_all
+)
+
+delong_results <- compare_models_delong(
+  y_true = auc_all$y_true_all,
+  score_list = score_list
+)
+
+print(delong_results)
+```
+
+### McNemar test with prediction accuracy
+```{r compare_svm_mcnemar}
+results <- compare_models_mcnemar(data_all_invest, data_BOLD_FC_invest, data_INS_BINS_invest)
+print(results)
+```

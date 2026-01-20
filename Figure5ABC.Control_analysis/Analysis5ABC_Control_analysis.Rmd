@@ -81,6 +81,20 @@ for (i in 1:100){
 meanACC_inter = mean(ACC_inter[,1])
 print(meanACC_inter)
 ```
+```{r acc_INS&BINS}
+ACC_all = data.frame();
+for (i in 1:100){
+  WNS_mean = extract_match_win_lose_mean(dataset_INS,dataset_y_attack,"WNS_",12)
+  BNS_mean = extract_match_win_lose_mean(dataset_BINS,dataset_y_attack,"BNS_",12)
+  BOLD_mean = extract_match_win_lose_mean(dataset_BOLD,dataset_y_attack,"BOLD_",12)
+  FC_mean = extract_match_win_lose_mean(dataset_FC,dataset_y_attack,"FC_",12)
+  data_all_invest = cbind(BOLD_mean[,c(1,3:ncol(BOLD_mean))],FC_mean[,3:ncol(FC_mean)],WNS_mean[,3:ncol(WNS_mean)],BNS_mean[,3:ncol(BNS_mean)])
+  acc_all = svm_cv_accuracy(data_all_invest,5,1,"radial")
+  ACC_all = rbind(ACC_all,acc_all)
+}
+meanACC_all = mean(ACC_all[,1])
+print(meanACC_all)
+```
 
 #### permutation
 ```{r permute_INS&BINS, eval=FALSE}
