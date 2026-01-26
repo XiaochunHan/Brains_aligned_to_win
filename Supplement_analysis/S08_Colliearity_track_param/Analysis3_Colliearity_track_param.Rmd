@@ -1,5 +1,5 @@
 ---
-title: "Analysis_Collinearity_track_param"
+title: "Analysis3_Collinearity_track_param"
 author: "Xiaochun Han"
 date: "2026-01-21"
 output: html_document
@@ -91,51 +91,6 @@ corrplot(cor_result$r,
          cl.pos = "n")            # 不重复显示颜色图例
 ```
 
-### partial correlation
-```{r collearity_AL}
-cor_result <- pcor(df_org_AL, method = "pearson")
-
-# 显示相关系数矩阵
-print("相关系数矩阵:")
-print(cor_result$estimate)
-
-# 显示p值矩阵
-print("显著性p值矩阵:")
-print(cor_result$p.value)
-
-# 2. 判断相关性是否显著（以0.05为显著性水平）
-significant <- cor_result$p.value < 0.05
-print("显著性判断（TRUE表示显著）:")
-print(significant)
-
-corrplot(cor_result$estimate, 
-         method = "color",        # 用颜色方块做背景
-         type = "upper",          # 只画上三角
-         col = rev(COL2('RdBu', 200)),
-         p.mat = cor_result$p.value,
-         sig.level = c(0.001, 0.01, 0.05),
-         insig = "label_sig",
-         pch.cex = 1.7,
-         pch.col = "white",
-         tl.pos = "lt",           # 标签位置放在左侧和上侧
-         cl.pos = "r",
-         tl.col = "black",
-         tl.cex = 1.5,            # 变量标签字体大小（放大）
-         tl.srt = 45)            # 颜色图例放在右侧
-
-# 然后，叠加绘制下三角部分，显示相关系数值
-corrplot(cor_result$estimate, 
-         add = TRUE,              # 关键：叠加到前一个图上
-         type = "lower",          # 只画下三角
-         method = "number",       # 下三角用数字显示相关系数
-         col = "black",           # 数字颜色为黑色
-         number.cex = 1.7,        # 设置数字大小
-         number.digits = 2,       # 保留2位小数
-         diag = FALSE,            # 不显示对角线内容
-         tl.pos = "n",            # 不重复显示变量标签
-         cl.pos = "n")            # 不重复显示颜色图例
-```
-
 ## Attacker-Follower
 ### Correlation
 ```{r collearity_AF}
@@ -182,49 +137,30 @@ corrplot(cor_result$r,
          cl.pos = "n")            # 不重复显示颜色图例
 ```
 
-### partial correlation
-```{r collearity_AF_partial}
-cor_result <- pcor(df_org_AF, method = "pearson")
+### Partial correlation
+####alpha2
+```{r partial correlation}
+#Attacker-Follower-WNC
+beh_AFW_alpha1 = tr[((tr$roleA1D2 == 1)&(tr$leadL1F2==0)),c("detaC_within_Tmean")]
+colnames(beh_AFW_alpha1) = 'alpha1'
+beh_AFW_alpha2 = tr[((tr$roleA1D2 == 1)&(tr$leadL1F2==0)),c("detaC_within_TG")]
+colnames(beh_AFW_alpha2) = 'alpha2' 
+neural_AFW = tr[((tr$roleA1D2 == 1)&(tr$leadL1F2==0)),grepl('WINS_CH', colnames(tr))]
 
-# 显示相关系数矩阵
-print("相关系数矩阵:")
-print(cor_result$estimate)
+df_org_AFW_alpha1_alpha2_neural = cbind(beh_AFW_alpha2,beh_AFW_alpha1,neural_AFW)
+AFW_alpha1_alpha2_neural <- lm(alpha2 ~ ., data = df_org_AFW_alpha1_alpha2_neural)
+summary(AFW_alpha1_alpha2_neural)
 
-# 显示p值矩阵
-print("显著性p值矩阵:")
-print(cor_result$p.value)
+#Attacker-Follower-WNC
+cv_AFW_alpha1_alpha2 = lm_cv_correlation(df_org_AFW_alpha1_alpha2_neural,5,100,'mse_value')
+perm_AFW_alpha1_alpha2 = lm_perm(df_org_AFW_alpha1_alpha2_neural,5,5000,'mse_value')
+saveRDS(perm_AFW_alpha1_alpha2, "lm_perm_AFW_alpha1_alpha2_5000_mse.RData")
+p_perm_AFW_alpha1_alpha2 = mean(cv_AFW_alpha1_alpha2>perm_AFW_alpha1_alpha2$lm_perm)
+print(p_perm_AFW_alpha1_alpha2)
+```
+### Partial correlation
+```{r partial correlation}
 
-# 2. 判断相关性是否显著（以0.05为显著性水平）
-significant <- cor_result$p.value < 0.05
-print("显著性判断（TRUE表示显著）:")
-print(significant)
-
-corrplot(cor_result$estimate, 
-         method = "color",        # 用颜色方块做背景
-         type = "upper",          # 只画上三角
-         col = rev(COL2('RdBu', 200)),
-         p.mat = cor_result$p.value,
-         sig.level = c(0.001, 0.01, 0.05),
-         insig = "label_sig",
-         pch.cex = 1.7,
-         pch.col = "white",
-         tl.pos = "lt",           # 标签位置放在左侧和上侧
-         cl.pos = "r",
-         tl.col = "black",
-         tl.cex = 1.5,            # 变量标签字体大小（放大）
-         tl.srt = 45)            # 颜色图例放在右侧
-
-# 然后，叠加绘制下三角部分，显示相关系数值
-corrplot(cor_result$estimate, 
-         add = TRUE,              # 关键：叠加到前一个图上
-         type = "lower",          # 只画下三角
-         method = "number",       # 下三角用数字显示相关系数
-         col = "black",           # 数字颜色为黑色
-         number.cex = 1.7,        # 设置数字大小
-         number.digits = 2,       # 保留2位小数
-         diag = FALSE,            # 不显示对角线内容
-         tl.pos = "n",            # 不重复显示变量标签
-         cl.pos = "n")            # 不重复显示颜色图例
 ```
 
 ## Defender-Leader
@@ -273,51 +209,6 @@ corrplot(cor_result$r,
          cl.pos = "n")            # 不重复显示颜色图例
 ```
 
-### partial correlation
-```{r collearity_DL_partial}
-cor_result <- pcor(df_org_DL, method = "pearson")
-
-# 显示相关系数矩阵
-print("相关系数矩阵:")
-print(cor_result$estimate)
-
-# 显示p值矩阵
-print("显著性p值矩阵:")
-print(cor_result$p.value)
-
-# 2. 判断相关性是否显著（以0.05为显著性水平）
-significant <- cor_result$p.value < 0.05
-print("显著性判断（TRUE表示显著）:")
-print(significant)
-
-corrplot(cor_result$estimate, 
-         method = "color",        # 用颜色方块做背景
-         type = "upper",          # 只画上三角
-         col = rev(COL2('RdBu', 200)),
-         p.mat = cor_result$p.value,
-         sig.level = c(0.001, 0.01, 0.05),
-         insig = "label_sig",
-         pch.cex = 1.7,
-         pch.col = "white",
-         tl.pos = "lt",           # 标签位置放在左侧和上侧
-         cl.pos = "r",
-         tl.col = "black",
-         tl.cex = 1.5,            # 变量标签字体大小（放大）
-         tl.srt = 45)            # 颜色图例放在右侧
-
-# 然后，叠加绘制下三角部分，显示相关系数值
-corrplot(cor_result$estimate, 
-         add = TRUE,              # 关键：叠加到前一个图上
-         type = "lower",          # 只画下三角
-         method = "number",       # 下三角用数字显示相关系数
-         col = "black",           # 数字颜色为黑色
-         number.cex = 1.7,        # 设置数字大小
-         number.digits = 2,       # 保留2位小数
-         diag = FALSE,            # 不显示对角线内容
-         tl.pos = "n",            # 不重复显示变量标签
-         cl.pos = "n")            # 不重复显示颜色图例
-```
-
 ## Defender-Follower
 ### correlatoin
 ```{r collearity_DF}
@@ -353,51 +244,6 @@ corrplot(cor_result$r,
 
 # 然后，叠加绘制下三角部分，显示相关系数值
 corrplot(cor_result$r, 
-         add = TRUE,              # 关键：叠加到前一个图上
-         type = "lower",          # 只画下三角
-         method = "number",       # 下三角用数字显示相关系数
-         col = "black",           # 数字颜色为黑色
-         number.cex = 1.7,        # 设置数字大小
-         number.digits = 2,       # 保留2位小数
-         diag = FALSE,            # 不显示对角线内容
-         tl.pos = "n",            # 不重复显示变量标签
-         cl.pos = "n")            # 不重复显示颜色图例
-```
-
-### partial correlation
-```{r collearity_DF}
-cor_result <- pcor(df_org_DF, method = "pearson")
-
-# 显示相关系数矩阵
-print("相关系数矩阵:")
-print(cor_result$estimate)
-
-# 显示p值矩阵
-print("显著性p值矩阵:")
-print(cor_result$p.value)
-
-# 2. 判断相关性是否显著（以0.05为显著性水平）
-significant <- cor_result$p.value < 0.05
-print("显著性判断（TRUE表示显著）:")
-print(significant)
-
-corrplot(cor_result$estimate, 
-         method = "color",        # 用颜色方块做背景
-         type = "upper",          # 只画上三角
-         col = rev(COL2('RdBu', 200)),
-         p.mat = cor_result$p.value,
-         sig.level = c(0.001, 0.01, 0.05),
-         insig = "label_sig",
-         pch.cex = 1.7,
-         pch.col = "white",
-         tl.pos = "lt",           # 标签位置放在左侧和上侧
-         cl.pos = "r",
-         tl.col = "black",
-         tl.cex = 1.5,            # 变量标签字体大小（放大）
-         tl.srt = 45)            # 颜色图例放在右侧
-
-# 然后，叠加绘制下三角部分，显示相关系数值
-corrplot(cor_result$estimate, 
          add = TRUE,              # 关键：叠加到前一个图上
          type = "lower",          # 只画下三角
          method = "number",       # 下三角用数字显示相关系数

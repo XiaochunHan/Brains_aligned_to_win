@@ -1,0 +1,104 @@
+---
+title: "Analysis_Collinearity_track_param"
+author: "Xiaochun Han"
+date: "2026-01-21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+source("../../utils/functions_library.R")
+load_packages(c("dplyr", "caret", "e1071","ggplot2", "pROC", "reshape2", "rstatix","plotrix","psych","readxl","ggpubr","car","corrplot","ppcor"))
+```
+
+## Import regress data
+```{r import_data}
+tr <- read.csv('Regress_Rvalue_VIFs.csv',header=TRUE,sep=",")
+
+df_R_AL = tr[((tr$Role.A.1. == 1)&(tr$Leader.L.1.==1)),c("R_IN_OUT","R_diff_IN","R_diff_OUT")]
+df_R_AF = tr[((tr$Role.A.1. == 1)&(tr$Leader.L.1.==0)),c("R_IN_OUT","R_diff_IN","R_diff_OUT")]
+df_R_DL = tr[((tr$Role.A.1. == 2)&(tr$Leader.L.1.==1)),c("R_IN_OUT","R_diff_IN","R_diff_OUT")]
+df_R_DF = tr[((tr$Role.A.1. == 2)&(tr$Leader.L.1.==0)),c("R_IN_OUT","R_diff_IN","R_diff_OUT")]
+
+df_vif_AL = tr[((tr$Role.A.1. == 1)&(tr$Leader.L.1.==1)),c("VIF_diff","VIF_IN","VIF_OUT")]
+df_vif_AF = tr[((tr$Role.A.1. == 1)&(tr$Leader.L.1.==0)),c("VIF_diff","VIF_IN","VIF_OUT")]
+df_vif_DL = tr[((tr$Role.A.1. == 2)&(tr$Leader.L.1.==1)),c("VIF_diff","VIF_IN","VIF_OUT")]
+df_vif_DF = tr[((tr$Role.A.1. == 2)&(tr$Leader.L.1.==0)),c("VIF_diff","VIF_IN","VIF_OUT")]
+```
+
+## Attacker-Leader
+### correlation
+```{r R_AL}
+means <- colMeans(df_R_AL)
+
+# 显示结果
+print("各列均值：")
+print(means)
+```
+
+### vif
+```{r vif_AL}
+means <- colMeans(df_vif_AL)
+
+# 显示结果
+print("各列均值：")
+print(means)
+```
+
+## Attacker-Follower
+### correlation
+```{r R_AF}
+means <- colMeans(df_R_AF)
+
+# 显示结果
+print("各列均值：")
+print(means)
+```
+
+### vif
+```{r vif_AF}
+means <- colMeans(df_vif_AF)
+
+# 显示结果
+print("各列均值：")
+print(means)
+```
+
+## Defender-Leader
+### correlation
+```{r R_DL}
+means <- colMeans(df_R_DL)
+
+# 显示结果
+print("各列均值：")
+print(means)
+```
+
+### vif
+```{r vif_DL}
+means <- colMeans(df_vif_DL)
+
+# 显示结果
+print("各列均值：")
+print(means)
+```
+
+## Defender-Follower
+### correlation
+```{r R_DF}
+means <- colMeans(df_R_DF)
+
+# 显示结果
+print("各列均值：")
+print(means)
+```
+
+### vif
+```{r vif_DF}
+means <- colMeans(df_vif_DF)
+
+# 显示结果
+print("各列均值：")
+print(means)
+```
