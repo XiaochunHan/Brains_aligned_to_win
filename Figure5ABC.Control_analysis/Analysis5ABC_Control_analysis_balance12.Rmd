@@ -1,0 +1,224 @@
+---
+title: "Analysis5ABC_Control_analysis"
+author: "Xiaochun Han"
+date: "2025-12-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+source("../utils/functions_library.R")
+load_packages(c("dplyr", "caret", "e1071","ggplot2", "pROC", "reshape2", "rstatix","pROC"))
+```
+
+
+
+
+## Match 12 trial
+### Import data
+```{r import_data}
+setwd('../Data/Develop')
+wd<-getwd()
+dataset_BOLD <- read.csv('BOLD_single_trial_invest.csv',header=TRUE,sep=",")
+dataset_FC <- read.csv('FC_single_trial_invest.csv',header=TRUE,sep=",")
+dataset_BINS <- read.csv('BINS_single_trial_invest.csv',header=TRUE,sep=",")
+dataset_INS <- read.csv('INS_single_trial_invest.csv',header=TRUE,sep=",")
+dataset_y <- read.csv('win_lose_and_pay_single_trial.csv',header=TRUE,sep=",")
+dataset_y_attack <- dataset_y[dataset_y$role.A.1. == 1,]
+dataset_y_attack <- dataset_y_attack[-c(4,14,22),] # Three sessions are deleted due to the absent of winning trial(4,22) and brain signal(14). 
+```
+
+### Inter-brain Match
+#### Accuracy
+```{r acc_INS&BINS}
+ACC_inter = data.frame();
+for (i in 1:100){
+  WNS_mean = extract_match_win_lose_mean(dataset_INS,dataset_y_attack,"WNS_",12)
+  BNS_mean = extract_match_win_lose_mean(dataset_BINS,dataset_y_attack,"BNS_",12)
+  data_INS_BINS_invest = cbind(WNS_mean[,c(1,3:ncol(WNS_mean))],BNS_mean[,3:ncol(BNS_mean)])
+  acc_ins_bins = svm_cv_accuracy(data_INS_BINS_invest,5,1,"radial")
+  ACC_inter = rbind(ACC_inter,acc_ins_bins)
+}
+meanACC_inter = mean(ACC_inter[,1])
+print(meanACC_inter)
+```
+
+#### AUC
+```{r auc_INS&BINS}
+auc_inter = auc_boot_cv(data_INS_BINS_invest,5,"radial",1000,TRUE,'#AD91C4','data_INS_BINS_invest_roc_plot_match12.png')
+```
+
+#### permutation
+```{r permute_INS&BINS, eval=FALSE}
+permACC_inter = data.frame();
+for (i in 1:5000){
+  WNS_mean = extract_match_win_lose_mean(dataset_INS,dataset_y_attack,"WNS_",12)
+  BNS_mean = extract_match_win_lose_mean(dataset_BINS,dataset_y_attack,"BNS_",12)
+  data_WNS_BNS_invest = cbind(WNS_mean[,c(1,3:ncol(WNS_mean))],BNS_mean[,3:ncol(BNS_mean)])
+  acc_ins_bins = svm_perm(data_WNS_BNS_invest,5,1,"radial")
+  permACC_inter = rbind(permACC_inter,acc_ins_bins[,1])
+}
+
+saveRDS(permACC_inter, file = "SVM_win_INS_BINS_perm_5000_match_12.RData")
+```
+
+#### figure
+```{r hist_INS&BINS}
+acc_match_inter_perm = readRDS("SVM_win_INS_BINS_perm_5000_match_12.RData")
+colnames(acc_match_inter_perm) = "acc_perm"
+acc_low_25 = sort(acc_match_inter_perm$acc_perm)[125]
+acc_top_25 = sort(acc_match_inter_perm$acc_perm)[4875]
+acc_match_inter_perm$ci95 = rep(0,5000)
+acc_match_inter_perm$ci95[(acc_match_inter_perm$acc_perm<acc_low_25|acc_match_inter_perm$acc_perm>acc_top_25)] = 1
+
+p_match_inter_perm = mean(meanACC_inter<acc_match_inter_perm$acc_perm)
+print(p_match_inter_perm)
+
+p <- ggplot(acc_match_inter_perm, aes(x = acc_perm, fill = as.factor(ci95))) +
+    geom_histogram(colour = "#4C4C4C", bins = 61) + 
+    scale_fill_manual(values = c("white","#B095C6"))+
+    geom_vline(aes(xintercept = meanACC_inter), color = "#B095C6", linewidth = 2) + theme_classic()+xlim(0,1) + 
+    labs(x = "Win-Lose Prediction Accuracy") + theme(text = element_text(size = 15),legend.position="none",axis.ticks.length=unit(-0.1, "cm"))
+print(p)
+ggsave("Match12_perm_INS_BINS.png", plot = p, width = 5, height = 4, dpi = 300)
+```
+
+### Intra-brain Match
+#### Accuracy
+```{r acc_BOLD&FC}
+ACC_intra = data.frame();
+for (i in 1:100){
+  BOLD_mean = extract_match_win_lose_mean(dataset_BOLD,dataset_y_attack,"BOLD_",12)
+  FC_mean = extract_match_win_lose_mean(dataset_FC,dataset_y_attack,"FC_",12)
+  data_BOLD_FC_invest = cbind(BOLD_mean[,c(1,3:ncol(BOLD_mean))],FC_mean[,3:ncol(FC_mean)])
+  acc_bold_fc = svm_cv_accuracy(data_BOLD_FC_invest,5,1,"radial")
+  ACC_intra = rbind(ACC_intra,acc_bold_fc)
+}
+meanACC_intra = mean(ACC_intra[,1])
+print(meanACC_intra)
+```
+
+#### AUC
+```{r auc_BOLD&FC}
+auc_intra = auc_boot_cv(data_BOLD_FC_invest,5,"radial",1000,TRUE,'#AD91C4','data_BOLD_FC_invest_roc_plot_match12.png')
+```
+
+#### permutation
+```{r permute_BOLD&FC, eval=FALSE}
+permACC_intra = data.frame();
+for (i in 1:5000){
+  print(i)
+  BOLD_mean = extract_match_win_lose_mean(dataset_BOLD,dataset_y_attack,"BOLD_",12)
+  FC_mean = extract_match_win_lose_mean(dataset_FC,dataset_y_attack,"FC_",12)
+  data_BOLD_FC_invest = cbind(BOLD_mean[,c(1,3:ncol(BOLD_mean))],FC_mean[,3:ncol(FC_mean)])
+  acc_bold_fc = svm_perm(data_BOLD_FC_invest,5,1,"radial")
+  permACC_intra = rbind(permACC_intra,acc_bold_fc[,1])
+}
+
+saveRDS(permACC_intra, file = "SVM_win_BOLD_FC_perm_5000_match_12.RData")
+```
+
+#### figure
+```{r hist_BOLD&FC}
+acc_match_intra_perm = readRDS("SVM_win_BOLD_FC_perm_5000_match_12.RData")
+colnames(acc_match_intra_perm) = "acc_perm"
+acc_low_25 = sort(acc_match_intra_perm$acc_perm)[125]
+acc_top_25 = sort(acc_match_intra_perm$acc_perm)[4875]
+acc_match_intra_perm$ci95 = rep(0,5000)
+acc_match_intra_perm$ci95[(acc_match_intra_perm$acc_perm<acc_low_25|acc_match_intra_perm$acc_perm>acc_top_25)] = 1
+
+p_match_intra_perm = mean(meanACC_intra<acc_match_intra_perm$acc_perm)
+print(p_match_intra_perm)
+
+p <- ggplot(acc_match_intra_perm, aes(x = acc_perm, fill = as.factor(ci95))) +
+    geom_histogram(colour = "#4C4C4C", bins = 61) + 
+    scale_fill_manual(values = c("white","#969796"))+
+    geom_vline(aes(xintercept = meanACC_intra), color = "#969796", linewidth = 2) + theme_classic()+xlim(0,1) + 
+    labs(x = "Win-Lose Prediction Accuracy") + theme(text = element_text(size = 15),legend.position="none",axis.ticks.length=unit(-0.1, "cm"))
+print(p)
+ggsave("Match12_perm_BOLD_FC.png", plot = p, width = 5, height = 4, dpi = 300)
+```
+
+### Full-model Match
+#### Accuracy
+```{r acc_all}
+ACC_all = data.frame();
+for (i in 1:100){
+  WNS_mean = extract_match_win_lose_mean(dataset_INS,dataset_y_attack,"WNS_",12)
+  BNS_mean = extract_match_win_lose_mean(dataset_BINS,dataset_y_attack,"BNS_",12)
+  BOLD_mean = extract_match_win_lose_mean(dataset_BOLD,dataset_y_attack,"BOLD_",12)
+  FC_mean = extract_match_win_lose_mean(dataset_FC,dataset_y_attack,"FC_",12)
+  data_all_invest = cbind(BOLD_mean[,c(1,3:ncol(BOLD_mean))],FC_mean[,3:ncol(FC_mean)],WNS_mean[,3:ncol(WNS_mean)],BNS_mean[,3:ncol(BNS_mean)])
+  acc_all = svm_cv_accuracy(data_all_invest,5,1,"radial")
+  ACC_all = rbind(ACC_all,acc_all)
+}
+meanACC_all = mean(ACC_all[,1])
+print(meanACC_all)
+```
+
+#### AUC
+```{r auc_all}
+auc_all = auc_boot_cv(data_all_invest,5,"radial",1000,TRUE,'#AD91C4','data_BOLD_FC_invest_roc_plot_match12.png')
+```
+
+#### permutation
+```{r permute_all, eval=FALSE}
+permACC_all = data.frame();
+for (i in 1:5000){
+  print(i)
+  WNS_mean = extract_match_win_lose_mean(dataset_INS,dataset_y_attack,"WNS_",12)
+  BNS_mean = extract_match_win_lose_mean(dataset_BINS,dataset_y_attack,"BNS_",12)
+  BOLD_mean = extract_match_win_lose_mean(dataset_BOLD,dataset_y_attack,"BOLD_",12)
+  FC_mean = extract_match_win_lose_mean(dataset_FC,dataset_y_attack,"FC_",12)
+  data_all_invest = cbind(BOLD_mean[,c(1,3:ncol(BOLD_mean))],FC_mean[,3:ncol(FC_mean)],WNS_mean[,3:ncol(WNS_mean)],BNS_mean[,3:ncol(BNS_mean)])
+  acc_all = svm_perm(data_all_invest,5,1,"radial")
+  permACC_all = rbind(permACC_all,acc_all[,1])
+}
+
+saveRDS(permACC_all, file = "SVM_win_all_perm_5000_match_12.RData")
+```
+
+#### figure
+```{r hist_all}
+acc_match_all_perm = readRDS("SVM_win_all_perm_5000_match_12.RData")
+colnames(acc_match_all_perm) = "acc_perm"
+acc_low_25 = sort(acc_match_all_perm$acc_perm)[125]
+acc_top_25 = sort(acc_match_all_perm$acc_perm)[4875]
+acc_match_all_perm$ci95 = rep(0,5000)
+acc_match_all_perm$ci95[(acc_match_all_perm$acc_perm<acc_low_25|acc_match_all_perm$acc_perm>acc_top_25)] = 1
+meanACC_all = 0.6270
+p_match_all_perm = mean(meanACC_all<acc_match_all_perm$acc_perm)
+print(p_match_all_perm)
+
+p <- ggplot(acc_match_all_perm, aes(x = acc_perm, fill = as.factor(ci95))) +
+    geom_histogram(colour = "#4C4C4C", bins = 61) + 
+    scale_fill_manual(values = c("white","#969796"))+
+    geom_vline(aes(xintercept = meanACC_all), color = "#969796", linewidth = 2) + theme_classic()+xlim(0,1) + 
+    labs(x = "Win-Lose Prediction Accuracy") + theme(text = element_text(size = 15),legend.position="none",axis.ticks.length=unit(-0.1, "cm"))
+print(p)
+ggsave("Match12_perm_all.png", plot = p, width = 5, height = 4, dpi = 300)
+```
+
+## Compare model performance
+### DeLong test with AUC
+```{r compare_models_delong}
+score_list <- list(
+  SVM_all   = auc_all$y_score_all,
+  SVM_intra   = auc_intra$y_score_all,
+  SVM_inter  = auc_inter$y_score_all
+)
+
+delong_results <- compare_models_delong(
+  y_true = auc_all$y_true_all,
+  score_list = score_list
+)
+
+print(delong_results)
+```
+
+### McNemar test with prediction accuracy
+```{r compare_svm_mcnemar}
+results <- compare_models_mcnemar(data_all_invest, data_BOLD_FC_invest, data_INS_BINS_invest)
+print(results)
+```
