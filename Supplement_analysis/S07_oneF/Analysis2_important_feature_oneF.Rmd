@@ -128,3 +128,36 @@ p<-ggplot(summary_data, aes(x = feature, y = Mean, fill = feature)) +
 print(p)
 ```
 
+## Top features
+### Feature selection
+```{r fi-select}
+threshold_value <- mean(fi_all$fi_value_percent) + sd(fi_all$fi_value_percent)
+
+filtered_fi <- fi_all %>%
+  filter(fi_value_percent > threshold_value) %>%  
+  arrange(desc(fi_value_percent))
+```
+
+### figure
+```{r figure_top14}
+color_vector <- sapply(filtered_fi$name, function(x) {
+  if (grepl("WNS", x)) return("#B195C6")
+  if (grepl("BNS", x)) return("#E5DCF2")
+})
+
+filtered_fi$name <- factor(filtered_fi$name, levels = filtered_fi$name)
+
+p <- ggplot(filtered_fi) +
+  geom_bar(aes(x = name, y = fi_value_percent, fill = color_vector), stat = "identity") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 0), legend.position = "none") +
+  labs(x = "Feature space", y = "Feature importance") +
+  scale_fill_identity() +
+  theme(text = element_text(size = 10),
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 90),
+        panel.background = element_rect(fill = "transparent", color = NA),
+        plot.background = element_rect(fill = "transparent", color = NA))
+
+print(p)
+```
