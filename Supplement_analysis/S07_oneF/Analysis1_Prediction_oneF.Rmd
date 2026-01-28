@@ -1,5 +1,5 @@
 ---
-title: "Analysis_oneF"
+title: "Analysis1_Prediction_oneF"
 author: "Xiaochun Han"
 date: "2026-01-20"
 output: html_document
@@ -74,6 +74,41 @@ auc_bold_fc = auc_boot_cv(data_BOLD_FC_invest,5,"radial",1000,TRUE,'#ACACAC','da
 auc_ins_bins = auc_boot_cv(data_INS_BINS_invest,5,"radial",1000,TRUE,'#AD91C4','data_INS_BINS_invest_roc_plot.png')
 ```
 
+## Permutation test
+```{r permute_test-5, eval=FALSE}
+acc_all_perm = svm_perm(data_all_invest,5,5000,"radial")
+acc_ins_bins_perm = svm_perm(data_INS_BINS_invest,5,5000,"radial")
+acc_bold_fc_perm = svm_perm(data_BOLD_FC_invest,5,5000,"radial")
+saveRDS(acc_all_perm, "SVM_win_all_perm_5000_oneF.RData")
+saveRDS(acc_ins_bins_perm, "SVM_win_INS_BINS_perm_5000_oneF.RData")
+saveRDS(acc_bold_fc_perm, "SVM_win_BOLD_FC_perm_5000_oneF.RData")
+```
+
+### Permutation read
+```{r perm_read_succ}
+acc_all_perm = readRDS("SVM_win_all_perm_5000_oneF.RData")
+acc_ins_bins_perm = readRDS("SVM_win_INS_BINS_perm_5000_oneF.RData")
+acc_bold_fc_perm = readRDS("SVM_win_BOLD_FC_perm_5000_oneF.RData")
+colnames(acc_all_perm) = 'acc_perm'
+colnames(acc_ins_bins_perm) = 'acc_perm'
+colnames(acc_bold_fc_perm) = 'acc_perm'
+```
+
+### Permutation p value
+```{r Summary_R2_succ}
+p_perm_list <- list(
+  p_perm_all = mean(acc_all<acc_all_perm$acc_perm),
+  p_perm_intra = mean(acc_bold_fc<acc_bold_fc_perm$acc_perm),
+  p_perm_inter = mean(acc_ins_bins<acc_ins_bins_perm$acc_perm)
+)
+
+p_perm <- data.frame(
+  p_values = sapply(p_perm_list, function(x) x),
+  stringsAsFactors = FALSE
+)
+
+print(p_perm)
+```
 ## Compare model performance
 ### DeLong test with AUC
 ```{r compare_models_delong}

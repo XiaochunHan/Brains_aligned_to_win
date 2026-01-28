@@ -1,0 +1,269 @@
+---
+title: "Analysis3_neural_behavior_correlation"
+author: "Xiaochun Han"
+date: "2026-01-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,warning = FALSE, message = FALSE)
+rm(list = ls())
+source("../../utils/functions_library.R")
+load_packages(c("dplyr", "caret", "e1071","ggplot2", "pROC", "reshape2", "rstatix","kableExtra","readxl"))
+```
+
+## Import regress data
+```{r import  invest}
+setwd('../../Data/Develop')
+wd<-getwd()
+df_invest <- read.csv('invest_single_trial_oneF.csv',header=TRUE,sep=",")
+df_success <- read_excel('DAFD_Behavior_Neural_30sess_behav_cor_LIME_20250522.xlsx',sheet="raw_data")
+```
+
+## Tracking regression
+```{r track_reg}
+tr = track_regress(df_invest, TRUE)
+```
+
+## Predic group success
+### reorg_data
+```{r stat}
+groupSuccess = df_success$suss[1:30]
+
+InfoTrack_Attack_Lead = tr[((tr$role.A.1. == 1)&(tr$lead.L.1.==1)),c("alpha1","alpha2","beta1")]
+InfoTrack_Attack_Follow = tr[((tr$role.A.1. == 1)&(tr$lead.L.1.==0)),c("alpha1","alpha2","beta1")]
+InfoTrack_Defend_Lead = tr[((tr$role.A.1. == 2)&(tr$lead.L.1.==1)),c("alpha1","alpha2","beta1")]
+InfoTrack_Defend_Follow = tr[((tr$role.A.1. == 2)&(tr$lead.L.1.==0)),c("alpha1","alpha2","beta1")]
+
+names(InfoTrack_Attack_Lead) = c("AL_alpha1","AL_alpha2","AL_beta1")
+names(InfoTrack_Attack_Follow) = c("AF_alpha1","AF_alpha2","AF_beta1")
+names(InfoTrack_Defend_Lead) = c("DL_alpha1","DL_alpha2","DL_beta1")
+names(InfoTrack_Defend_Follow) = c("DF_alpha1","DF_alpha2","DF_beta1")
+
+df_org_infoTrack = cbind(groupSuccess,InfoTrack_Attack_Lead,InfoTrack_Attack_Follow,InfoTrack_Defend_Lead,InfoTrack_Defend_Follow)
+df_org_infoTrack_Attack = cbind(groupSuccess,InfoTrack_Attack_Lead,InfoTrack_Attack_Follow)
+df_org_infoTrack_Defend = cbind(groupSuccess,InfoTrack_Defend_Lead,InfoTrack_Defend_Follow)
+```
+
+### Regression
+```{r Regress_succ}
+model_list <- list(
+model_all <- lm(groupSuccess ~ ., data = df_org_infoTrack),
+model_attack <- lm(groupSuccess ~ ., data = df_org_infoTrack_Attack),
+model_defend <- lm(groupSuccess ~ ., data = df_org_infoTrack_Defend)
+)
+
+R2 <- data.frame(
+  Model_Name = c("model_all","model_attack","model_defend"),
+  R_squared = numeric(length(model_list)),
+  stringsAsFactors = FALSE
+)
+
+for (i in seq_along(model_list)) {
+  model_summary <- summary(model_list[[i]])
+  R2$R_squared[i] <- model_summary$r.squared
+}
+
+print(R2)
+```
+
+### Regression cross-validation
+```{r cross_valid_succ}
+cv_list <- list(
+cv_all = lm_cv_correlation(df_org_infoTrack,5,100,'r_value'),
+cv_attack = lm_cv_correlation(df_org_infoTrack_Attack,5,100,'r_value'),
+cv_defend = lm_cv_correlation(df_org_infoTrack_Defend,5,100,'r_value')
+)
+
+Rvalue <- data.frame(
+  r_values = sapply(cv_list, function(x) x),
+  stringsAsFactors = FALSE
+)
+
+print(Rvalue)
+```
+
+### Permutation cross-validation
+```{r permutation_succ, eval=FALSE}
+perm_all = lm_perm(df_org_infoTrack,5,5000,'r_value')
+perm_attack = lm_perm(df_org_infoTrack_Attack,5,5000,'r_value')
+perm_defend = lm_perm(df_org_infoTrack_Defend,5,5000,'r_value')
+saveRDS(perm_all, "lm_perm_all_5000_r_oneF.RData")
+saveRDS(perm_attack, "lm_perm_attack_5000_r_oneF.RData")
+saveRDS(perm_defend, "lm_perm_defend_5000_r_oneF.RData")
+```
+
+### Permutation read
+```{r perm_read_succ}
+perm_all = readRDS("lm_perm_all_5000_r_oneF.RData")
+perm_attack = readRDS("lm_perm_attack_5000_r_oneF.RData")
+perm_defend = readRDS("lm_perm_defend_5000_r_oneF.RData")
+```
+
+### Permutation p value
+```{r Summary_R2_succ}
+p_perm_list <- list(
+  p_perm_all = mean(cv_list$cv_all<perm_all$lm_perm),
+  p_perm_attack = mean(cv_list$cv_attack<perm_attack$lm_perm),
+  p_perm_defend = mean(cv_list$cv_defend<perm_defend$lm_perm)
+)
+
+p_perm <- data.frame(
+  p_values = sapply(p_perm_list, function(x) x),
+  stringsAsFactors = FALSE
+)
+
+print(p_perm)
+```
+
+## Neural-behavior association
+### Import neural data
+```{r import data}
+setwd('../../Data/Develop')
+wd<-getwd()
+dataset_BINS <- read.csv('BINS_single_trial_invest_oneF.csv',header=TRUE,sep=",")
+dataset_INS <- read.csv('INS_single_trial_invest_oneF.csv',header=TRUE,sep=",")
+INS_mean = cbind(dataset_INS[,c(1:6)], rowMeans(dataset_INS[,grepl('R',colnames(dataset_INS))]))
+BINS_mean = cbind(dataset_BINS[,c(1:6)], rowMeans(dataset_BINS[,grepl('R',colnames(dataset_BINS))]))
+colnames(INS_mean) = c("n","Bonding2","num","RoleA1","LeadL1","CH","meanCoupling")
+colnames(BINS_mean) = c("n","Bonding2","num","RoleA1","LeadL1","CH","meanCoupling")
+INS_mean$RoleA1 = gsub('1','WNS_Attack',INS_mean$RoleA1)
+INS_mean$RoleA1 = gsub('2','WNS_Defend',INS_mean$RoleA1)
+INS_mean$LeadL1 = gsub('1','L',INS_mean$LeadL1)
+INS_mean$LeadL1 = gsub('0','F',INS_mean$LeadL1)
+INS_mean$CH <- paste0("CH",INS_mean$CH)
+INS_mean_reorg<-dcast(INS_mean, n ~ RoleA1 + LeadL1 + CH, value.var = "meanCoupling")
+
+BINS_mean$RoleA1 = gsub('1','BNS_Attack',BINS_mean$RoleA1)
+BINS_mean$RoleA1 = gsub('2','BNS_Defend',BINS_mean$RoleA1)
+BINS_mean$LeadL1 = gsub('1','L',BINS_mean$LeadL1)
+BINS_mean$LeadL1 = gsub('0','F',BINS_mean$LeadL1)
+BINS_mean$CH <- paste0("CH",BINS_mean$CH)
+BINS_mean_reorg<-dcast(BINS_mean, n ~ RoleA1 + LeadL1 + CH, value.var = "meanCoupling")
+```
+
+### reorg_data
+```{r reorg_data}
+#Attacker-Leader-WNC
+neural_ALW = INS_mean_reorg[,grepl('WNS_Attack_L', colnames(INS_mean_reorg))]
+df_org_ALW_alpha1 = cbind(df_org_infoTrack$AL_alpha1,df_org_infoTrack$AL_alpha2,neural_ALW)
+df_org_ALW_alpha2 = cbind(df_org_infoTrack$AL_alpha2,df_org_infoTrack$AL_alpha1,neural_ALW)
+
+#Attacker-Leader-BNC
+neural_ALB = BINS_mean_reorg[,grepl('BNS_Attack_L', colnames(BINS_mean_reorg))]
+df_org_ALB = cbind(df_org_infoTrack$AL_beta1,neural_ALB)
+
+#Attacker-Follower-WNC
+neural_AFW = INS_mean_reorg[,grepl('WNS_Attack_F', colnames(INS_mean_reorg))]
+df_org_AFW_alpha1 = cbind(df_org_infoTrack$AF_alpha1,df_org_infoTrack$AF_alpha2,neural_AFW)
+df_org_AFW_alpha2 = cbind(df_org_infoTrack$AF_alpha2,df_org_infoTrack$AF_alpha1,neural_AFW)
+
+#Attacker-Follower-BNC
+neural_AFB = BINS_mean_reorg[,grepl('BNS_Attack_F', colnames(BINS_mean_reorg))]
+df_org_AFB = cbind(df_org_infoTrack$AF_beta1,neural_AFB)
+```
+
+### Regression Analysis
+```{r Regress_analysis}
+model_list <- list(
+#Attacker-leader
+ALW_alpha1 <- lm(`df_org_infoTrack$AL_alpha1`~ ., data = df_org_ALW_alpha1),
+ALW_alpha2 <- lm(`df_org_infoTrack$AL_alpha2` ~ ., data = df_org_ALW_alpha2),
+ALB_beta1 <- lm(`df_org_infoTrack$AL_beta1` ~ ., data = df_org_ALB),
+
+#Attacker-follower
+AFW_alpha1 <- lm(`df_org_infoTrack$AF_alpha1` ~ ., data = df_org_AFW_alpha1),
+AFW_alpha2 <- lm(`df_org_infoTrack$AF_alpha2` ~ ., data = df_org_AFW_alpha2),
+AFB_beta1 <- lm(`df_org_infoTrack$AF_beta1` ~ ., data = df_org_AFB)
+)
+
+R2 <- data.frame(
+  Model_Name = c("ALW_alpha1","ALW_alpha2","ALB_beta1",
+                 "AFW_alpha1","AFW_alpha2","AFB_beta1"),
+  R_squared = numeric(length(model_list)),
+  stringsAsFactors = FALSE
+)
+
+for (i in seq_along(model_list)) {
+  model_summary <- summary(model_list[[i]])
+  R2$R_squared[i] <- model_summary$r.squared
+}
+
+print(R2)
+```
+
+### Regression cross-validation
+```{r cross_valid}
+cv_list <- list(
+#Attacker-leader
+cv_ALW_alpha1 = lm_cv_correlation(df_org_ALW_alpha1,5,100,'r_value'),
+cv_ALW_alpha2 = lm_cv_correlation(df_org_ALW_alpha2,5,100,'r_value'),
+cv_ALB_beta1 = lm_cv_correlation(df_org_ALB,5,100,'r_value'),
+
+#Attacker-follower
+cv_AFW_alpha1 = lm_cv_correlation(df_org_AFW_alpha1,5,100,'r_value'),
+cv_AFW_alpha2 = lm_cv_correlation(df_org_AFW_alpha2,5,100,'r_value'),
+cv_AFB_beta1 = lm_cv_correlation(df_org_AFB,5,100,'r_value')
+)
+
+R_value <- data.frame(
+  r_values = sapply(cv_list, function(x) x),
+  stringsAsFactors = FALSE
+)
+
+print(R_value)
+```
+
+### Permutation cross-validation
+```{r permutation, eval=FALSE}
+#Attacker-leader
+perm_ALW_alpha1 = lm_perm(df_org_ALW_alpha1,5,5000,'r_value')
+perm_ALW_alpha2 = lm_perm(df_org_ALW_alpha2,5,5000,'r_value')
+perm_ALB_beta1 = lm_perm(df_org_ALB,5,5000,'r_value')
+
+saveRDS(perm_ALW_alpha1, "lm_perm_ALW_alpha1_5000_r_oneF.RData")
+saveRDS(perm_ALW_alpha2, "lm_perm_ALW_alpha2_5000_r_oneF.RData")
+saveRDS(perm_ALB_beta1, "lm_perm_ALB_beta1_5000_r_oneF.RData")
+
+#Attacker-follower
+perm_AFW_alpha1 = lm_perm(df_org_AFW_alpha1,5,5000,'r_value')
+perm_AFW_alpha2 = lm_perm(df_org_AFW_alpha2,5,5000,'r_value')
+perm_AFB_beta1 = lm_perm(df_org_AFB,5,5000,'r_value')
+
+saveRDS(perm_AFW_alpha1, "lm_perm_AFW_alpha1_5000_r_oneF.RData")
+saveRDS(perm_AFW_alpha2, "lm_perm_AFW_alpha2_5000_r_oneF.RData")
+saveRDS(perm_AFB_beta1, "lm_perm_AFB_beta1_5000_r_oneF.RData")
+```
+
+
+### Permutation read
+```{r perm_read}
+#Attacker-leader
+perm_ALW_alpha1 = readRDS("lm_perm_ALW_alpha1_5000_r_oneF.RData")
+perm_ALW_alpha2 = readRDS("lm_perm_ALW_alpha2_5000_r_oneF.RData")
+perm_ALB_beta1 = readRDS("lm_perm_ALB_beta1_5000_r_oneF.RData")
+
+#Attacker-follower
+perm_AFW_alpha1 = readRDS("lm_perm_AFW_alpha1_5000_r_oneF.RData")
+perm_AFW_alpha2 = readRDS("lm_perm_AFW_alpha2_5000_r_oneF.RData")
+perm_AFB_beta1 = readRDS("lm_perm_AFB_beta1_5000_r_oneF.RData")
+```
+
+### Permutation p value
+```{r Summary_R2}
+p_perm_list <- list(
+  p_perm_ALW_alpha1 = mean(cv_list$cv_ALW_alpha1<perm_ALW_alpha1$lm_perm),
+  p_perm_ALW_alpha2 = mean(cv_list$cv_ALW_alpha2<perm_ALW_alpha2$lm_perm),
+  p_perm_ALB_beta1 = mean(cv_list$cv_ALB_beta1<perm_ALB_beta1$lm_perm),
+  p_perm_AFW_alpha1 = mean(cv_list$cv_AFW_alpha1<perm_AFW_alpha1$lm_perm),
+  p_perm_AFW_alpha2 = mean(cv_list$cv_AFW_alpha2<perm_AFW_alpha2$lm_perm),
+  p_perm_AFB_beta1 = mean(cv_list$cv_AFB_beta1<perm_AFB_beta1$lm_perm)
+)
+
+p_perm <- data.frame(
+  p_values = sapply(p_perm_list, function(x) x),
+  stringsAsFactors = FALSE
+)
+
+print(p_perm)
+```

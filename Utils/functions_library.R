@@ -406,7 +406,7 @@ svm_general_accuracy_perm <- function(df1,df2,n_iter){
 
 #===============================================================================
 ## Function12: track_regress
-track_regress <- function(df_invest){
+track_regress <- function(df_invest, oneF = TRUE){
   df_invest_Trial = df_invest[,grepl('_inv', colnames(df_invest))]
   df_invest_Manip = df_invest[,!grepl('_inv', colnames(df_invest))]
   delta_invest = df_invest_Trial[,2:24] - df_invest_Trial[,1:23]
@@ -452,7 +452,12 @@ track_regress <- function(df_invest){
   colnames(reg_coef_follow) = colnames(reg_coef_lead)
   reg_coef_mean = rbind(reg_coef_lead, reg_coef_follow)
   reg_coef_mean = reg_coef_mean[order(reg_coef_mean$n, reg_coef_mean$role.A.1., reg_coef_mean$lead.L.1.),]
-  return(reg_coef_mean)
+  if (oneF == TRUE){
+    reg_coef_oneF = reg_coef[reg_coef$select == 1,]
+    return(reg_coef_oneF)
+  }else{
+    return(reg_coef_mean)
+  }
 }
 
 #===============================================================================
