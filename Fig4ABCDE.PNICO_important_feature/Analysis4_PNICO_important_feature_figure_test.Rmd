@@ -14,12 +14,15 @@ load_packages(c("dplyr", "caret", "e1071","ggplot2", "pROC", "reshape2", "rstati
 
 ## Feature importance read
 ```{r read_feat_impor}
+# 读取数据
 fi_fs_invest <- readRDS("fi_all_invest_WNS_BNS_5000.RData")
 acc_ins_bins <- 0.9212
 
 # 预分配结果向量（确保是数值型）
 dec_acc <- numeric(length = 112)
 ste_acc <- numeric(length = 112)
+ci_lower <- numeric(length = 112)  # 95%置信区间下限
+ci_upper <- numeric(length = 112)  # 95%置信区间上限
 
 # 自定义标准误函数[1,7](@ref)
 stderr <- function(x) {
@@ -30,19 +33,28 @@ for (v in 1:length(fi_fs_invest)) {
   # 提取当前acc_perm数据
   current_acc_perm <- fi_fs_invest[[v]][[2]]$acc_perm
   
-  # 计算均值差（注意运算顺序）[1](@ref)
+  # 计算均值差[1](@ref)
   dec_acc[v] <- (acc_ins_bins - mean(current_acc_perm, na.rm = TRUE)) * 100
   
-  # 计算标准误（先计算标准误，再乘以100）[7](@ref)
+  # 计算标准误[7](@ref)
   ste_acc[v] <- stderr(current_acc_perm) * 100
+  
+  # 计算95%置信区间[2,5,7](@ref)
+  n <- length(na.omit(current_acc_perm))
+  t_critical <- qt(0.975, df = n - 1)  # 95%置信水平的t临界值
+  ci_lower[v] <- dec_acc[v] - t_critical * ste_acc[v]
+  ci_upper[v] <- dec_acc[v] + t_critical * ste_acc[v]
 }
 
 # 创建结果数据框
 fi_all <- data.frame(
   name = names(fi_fs_invest),
   fi_value_percent = dec_acc,
-  ste_value_percent = ste_acc
+  ste_value_percent = ste_acc,
+  ci_lower = ci_lower,
+  ci_upper = ci_upper
 )
+
 ```
 
 ## Top features
@@ -57,19 +69,35 @@ filtered_fi <- fi_all %>%
 
 ### figure
 ```{r figure_top14}
-df <- as.data.frame(filtered_dec_acc_dist)
+filtered_fi_sorted <- filtered_fi %>%
+  arrange(desc(fi_value_percent)) %>%  # 按fi_value_percent降序排列
+  mutate(name = factor(name, levels = name))  %>%
+  mutate(category = ifelse(grepl("WNS", name), "WNS", 
+                          ifelse(grepl("BNS", name), "BNS", "Other")))
 
-# 转换数据为长格式
-df_long <- melt(df, variable.name = "Variable", value.name = "Value")
 
-ggplot(df_long, aes(x = Value)) +
-  geom_histogram(aes(y = ..density..), bins = 30, fill = "lightblue", alpha = 0.7) +
-  geom_density(color = "red", size = 1) +
-  facet_wrap(~ Variable, scales = "free", ncol = 3) +  # 3列布局
-  labs(title = "14个变量的分布直方图和密度曲线", 
-       x = "数值", 
-       y = "密度") +
-  theme_bw()
+ggplot(filtered_fi_sorted, aes(x = name, y = fi_value_percent)) +
+  # 添加误差线（95%置信区间）
+  geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper), 
+                width = 0.2, color = "darkred", size = 0.7) +
+  # 添加均值点，按WNS/BNS分类着色
+  geom_point(aes(color = category), size = 1, shape = 21, fill = "white", stroke = 1.2) +
+  # 设置颜色映射
+  scale_color_manual(values = c("WNS" = "#E69F00", "BNS" = "#56B4E9", "Other" = "#999999"),
+                     name = "变量类型") +
+  # 设置纵坐标范围从0开始
+  scale_y_continuous(limits = c(0, max(filtered_fi_sorted$ci_upper, na.rm = TRUE) * 1.1),
+                     expand = c(0, 0)) +
+  # 设置坐标轴标签和标题
+  labs(title = "各变量均值与95%置信区间分布图",
+       x = "变量名称",
+       y = "fi_value_percent (%)",
+       caption = "点表示均值，误差线表示95%置信区间") +
+  # 调整主题样式
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        legend.position = "bottom")  # 图例放在底部
 ```
 
 ## Directional influence
